@@ -3,8 +3,18 @@ ZP_OUTPUT_VEC = $FD
 ZP_INPUT_VEC = $F9
 ZP_ATIME_1 = $F8
 ZP_ATIME_2 = $F7
-FAR_TIME = 150 ; hard maximum for any fast marching time. maximum: 240
+FAR_TIME = 240 ; hard maximum for any fast marching time. maximum: 240
 EMPTY_HEAP = 255;
+
+_FMM_X_2_Y_3 = 2+3*FMM_WIDTH ; < 256 so FMM_WIDTH <= 84
+_FMM_X_3_Y_2 = 3+2*FMM_WIDTH 
+_FMM_X_2_Y_2 = 2+2*FMM_WIDTH
+_FMM_X_1_Y_2 = 1+2*FMM_WIDTH
+_FMM_X_0_Y_2 = 0+2*FMM_WIDTH
+_FMM_X_2_Y_1 = 2+1*FMM_WIDTH
+_FMM_X_1_Y_1 = 1+1*FMM_WIDTH
+_FMM_SIZE = FMM_WIDTH * FMM_HEIGHT
+_FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
 
 watch heap_location
 watch ZP_HEAP_PTR
@@ -21,13 +31,16 @@ fmm_reset       LDY #0 ; this is the low address byte, but arrival time should b
 _fmm_resetpage  LDX #42 ; mutated
                 STX ZP_OUTPUT_VEC+1        
                 LDA #FAR_TIME   
-                LDX #4
+                LDX #>_FMM_SIZE_MINUS_1
+                LDY #<_FMM_SIZE_MINUS_1
 @loop           STA (ZP_OUTPUT_VEC),y 
-                INY
+                DEY
                 BNE @loop
-                INC ZP_OUTPUT_VEC+1
+                STA (ZP_OUTPUT_VEC),y 
+                DEY
+                DEC ZP_OUTPUT_VEC+1
                 DEX
-                BNE @loop
+                BPL @loop
                 JMP queue_clear ; tail call into queue_clear
 
 ;------------------------------
@@ -48,8 +61,9 @@ defm            fmm_setinput
 ; touches A and carry
 ;------------------------------
 defm            fmm_setoutput   
-                LDA #>/1 
+                LDA #>/1 + _FMM_SIZE_MINUS_1 
                 STA _fmm_resetpage+1
+                LDA #>/1
                 SEC
                 SBC #>heap_location
                 STA _fmm_pshiftout+1
@@ -85,7 +99,7 @@ fmm_run         LDA heap_size
                 BEQ fmm_return  ;  if heap is empty, we're done
                 LDA heap_lo
                 SEC
-                SBC #66 ; shift two rows and two columns
+                SBC #_FMM_X_2_Y_2 ; shift two rows and two columns
                 STA ZP_HEAP_PTR
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
@@ -100,16 +114,16 @@ _fmm_pshiftout  ADC #42 ; mutated code so the user can choose where to write out
 _fmm_pshiftin   ADC #42 ; mutated code so the user can choose where to read input
                 STA ZP_INPUT_VEC+1
                 LDA heap_priority
-                LDY #66
+                LDY #_FMM_X_2_Y_2
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
                 JSR queue_deletemin ; this cell is now accepted
-                LDY #65   ; consider the cell on the left
+                LDY #_FMM_X_1_Y_2   ; consider the cell on the left
                 JSR _fmm_consider
-                LDY #67   ; consider the cell on the right
+                LDY #_FMM_X_3_Y_2   ; consider the cell on the right
                 JSR _fmm_consider
-                LDY #34    ; consider the cell below
+                LDY #_FMM_X_2_Y_1   ; consider the cell below
                 JSR _fmm_consider
-                LDY #98    ; consider cell above
+                LDY #_FMM_X_2_Y_3    ; consider cell above
                 JSR _fmm_consider
                 JMP fmm_run
 fmm_return     RTS
@@ -132,12 +146,12 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_1 ; ATIME_1 is smaller of the horizontal times
 @left_le_right  TYA 
                 SEC
-                SBC #33 ; shift left and down
+                SBC #_FMM_X_1_Y_1 ; shift left and down
                 TAY
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_2
                 TYA    
-                ADC #63 ; shift two rows up (2*32), note that carry is set
+                ADC #_FMM_X_0_Y_2-1; shift two rows up (2*32), note that carry is set
                 TAY
                 LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_2
@@ -154,7 +168,7 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
 @ispositive     TAX  ; X is now the relative arrive time of the two cells
                 TYA       ; you probably didn't remember that y still is the cell index
                 SEC
-                SBC #32   ; shift one down = go back to the center
+                SBC #FMM_WIDTH   ; shift one down = go back to the center
                 TAY
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 fmm_continue
