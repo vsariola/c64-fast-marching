@@ -4,9 +4,9 @@
 <!-- Project Target : C64 -->
 <Project>
     <Target>2</Target>
-    <Executable>c64-fast-marching2.prg</Executable>
+    <Executable>c64-fast-marching.prg</Executable>
     <StartAddress>2049</StartAddress>
-    <FilesGlobal>False</FilesGlobal>
+    <FilesGlobal>True</FilesGlobal>
     <BatchMode>False</BatchMode>
     <AppendToDisk>False</AppendToDisk>
     <GenToDisk>False</GenToDisk>
@@ -14,7 +14,7 @@
     <d64Name />
     <Comments />
     <Author />
-    <AutoLaunchName>c64-fast-marching2.prg</AutoLaunchName>
+    <AutoLaunchName>c64-fast-marching.prg</AutoLaunchName>
     <Cartridge>
         <CrtBuildingCartridge>False</CrtBuildingCartridge>
         <CrtSignature>C64 CARTRIDGE</CrtSignature>
@@ -36,16 +36,16 @@
         <PostBuildCommands />
     </BuildEvents>
     <BuildList>
-        <FileName>Main.asm</FileName>
-        <FileName>binaryheap.asm</FileName>
-        <FileName>fastmarching.asm</FileName>
+        <FileName>circular_list.asm</FileName>
+        <FileName>priority_list.asm</FileName>
+        <FileName>fast_marching.asm</FileName>
     </BuildList>
     <DetermineBuildOrder>1</DetermineBuildOrder>
     <PaddingByte>0</PaddingByte>
     <AssyBinaryFileLocation />
     <SourceFiles>
         <SourceFile>
-            <Name>binaryheap.asm</Name>
+            <Name>circular_list.asm</Name>
             <PrgName />
             <FileType>2</FileType>
             <IncludeInBuild>True</IncludeInBuild>
@@ -56,18 +56,7 @@
             <FileOpen>True</FileOpen>
         </SourceFile>
         <SourceFile>
-            <Name>fastmarching.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>True</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>Main.asm</Name>
+            <Name>fast_marching.asm</Name>
             <PrgName />
             <FileType>2</FileType>
             <IncludeInBuild>True</IncludeInBuild>
@@ -81,12 +70,67 @@
             <Name>map.sdd</Name>
             <PrgName />
             <FileType>9</FileType>
-            <IncludeInBuild>True</IncludeInBuild>
+            <IncludeInBuild>False</IncludeInBuild>
             <Regions />
             <Breakpoints />
             <Bookmarks />
             <Topmost>False</Topmost>
             <FileOpen>False</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>priority_list.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>True</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>test_circular_list.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>test_fmm.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>test_lighting.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>test_priority_list.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
         </SourceFile>
     </SourceFiles>
 </Project>

@@ -2,12 +2,15 @@ FMM_WIDTH = 40;
 FMM_HEIGHT = 25;
 
 START_LOC = 10+FMM_WIDTH*10 ; $01EF
-START_LOC2 = 22+32*15 ; 
+START_LOC2 = 22+32*15 ; $01F6
 screen_mem = $0400
-ZP_TMP_1 = $F5
-ZP_TMP_2 = $F3
 
 ; 10 SYS4096
+
+* = $1900
+incasm "circular_list.asm"
+incasm "priority_list.asm"
+incasm "fast_marching.asm"
 
 * = $0801
         BYTE    $0B, $08, $0A, $00, $9E, $34, $30, $39, $36, $00, $00, $00
@@ -17,6 +20,7 @@ ZP_TMP_2 = $F3
                 fmm_setinput map
                 fmm_setoutput screen_mem
                 fmm_setcallback callback
+                JSR list_init
                 JSR fmm_reset
                 LDX #<START_LOC
                 LDY #>START_LOC
