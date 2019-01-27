@@ -31,9 +31,10 @@ watch pri_lo
 ;       elem = first unused element
 ;    end
 ;    *ptr = elem
+;    ptrs[elem] = ptr
 ; end
 ; move elem as the first element of list priority & (NUM_LISTS-1)
-; ptrs[elem] = ptr
+; 
 ; 
 ; Parameters:
 ;       A = priority of the cell
@@ -46,35 +47,35 @@ pri_set         PHA
                 STY ZP_PRI_TEMP+1
                 LDY #0
                 LDA (ZP_PRI_TEMP),y
-                CMP #255
+                TAX
+                CPX #255
                 BNE @found_elem
                 LDX list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
                 BNE @setptr       ; if there's unused elements, we jump
                 LDA pri_base
-@loop           SEC
-                SBC #1
+@loop           SBC #0 ; carry is guaranteed to be cleared here 
                 AND #NUM_LISTS-1
-                TAX
-                CMP list_next,x
+                TAY
+                CMP list_next,y
                 BEQ @loop
+                LDX list_next,y
                 LDA pri_lo,x
                 STA @mutant3+1
                 LDA pri_hi,x
                 STA @mutant3+2
                 LDA #255
-@mutant3        STA $4242
+@mutant3        STA $4242     
+                LDY #0
 @setptr         TXA
                 STA (ZP_PRI_TEMP),y
-@found_elem     TAX
-                PLA
-                AND #NUM_LISTS-1
-                JSR list_move ; move element X to list A =priority&(NUMLISTS-1))
                 LDA ZP_PRI_TEMP ; ptrs[x] = ptr
                 STA pri_lo,x ; note that list_move left X unchanged
                 LDA ZP_PRI_TEMP+1
                 STA pri_hi,x
-                RTS
+@found_elem     PLA ; A was the priority
+                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
+                JMP list_move ; tail call to move eement X to list A
 
 ;-------------------------------------------------------------------------------
 ; pri_dequeue()
@@ -104,9 +105,9 @@ pri_dequeue     LDA pri_base
                 STA @mutant5+2
                 LDA #255
 @mutant5        STA $4242
-                LDA #0
-                STA pri_lo,x
-                STA pri_hi,x
+                ;LDA #0  ; these are not really necessary
+                ;STA pri_lo,x
+                ;STA pri_hi,x
                 LDA #255
                 JSR list_move
                 LDX @mutant5+1
