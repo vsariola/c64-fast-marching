@@ -322,8 +322,7 @@ fmm_continue
                 BCS fmm_return ; the new time is > FAR_TIME so stop now
                 STA ZP_ATIME_1 ; ATIME_1 is now the new arrival time
                 TYA              ; A = relative index to the cell
-                CLC
-                ADC ZP_BACKPTR_VEC ; add A to ZP_BACKPTR_VEC (word)
+                ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
                 TAX  ; X = low address
                 LDA #0
                 ADC ZP_BACKPTR_VEC+1
