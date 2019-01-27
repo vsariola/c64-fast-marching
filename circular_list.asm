@@ -1,6 +1,8 @@
 watch list_next
 watch list_prev
 
+ZP_CIRC_TEMP = $03
+
 ;------------------------------
 ; checks if list X is empty
 ; touches A
@@ -61,28 +63,23 @@ list_init       TAX
 ; touches A and Y
 ;------------------------------ 
 list_move       PHA   ; store the new list for now, remove from the old list first
-                TXA   
-                PHA   ; store X, the element being added
+                STX ZP_CIRC_TEMP
                 LDA list_next,x ; following lines link the next[x] and prev[x]
                 LDY list_prev,x ; elements pointing to each other
                 STA list_next,y
                 TAX
                 TYA
                 STA list_prev,x ; the old list is now linked
-                PLA ; recover the element being added from stack
-                TAX ; X = the element being added
+                LDX ZP_CIRC_TEMP
                 PLA ; A = the head of the new list
                 STA list_prev,x ; prev[x] = head              
                 TAY ; Y = the head of the new list
-                LDA list_next,y
-                PHA ; push current next[head]
-                TXA
+                TXA ; A = the newly added element
+                LDX list_next,y ; X is the soon to be second elemt
                 STA list_next,y ; next[head] = elem
-                PLA ; A is the soon to be second elemt
-                TAY ; Y is the soon to be second element
+                STA list_prev,x ;  
                 TXA
-                STA list_prev,y ;  
-                TYA
+                LDX ZP_CIRC_TEMP
                 STA list_next,x
                 RTS
 
