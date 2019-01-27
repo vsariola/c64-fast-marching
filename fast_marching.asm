@@ -1,4 +1,4 @@
-; (c) 2018 Veikko Sariola
+; (c) 2018-2019 Veikko Sariola
 ; O(N) Fast Marching Method in C64
 ;
 ; Original Fast Marching Method which runs in O(N log N) time was developed by
@@ -113,13 +113,13 @@
 
 ; Temporary zero page registers used internally by fmm_run. Can be safely used
 ; when fmm_run is not running. 
-ZP_HEAP_PTR = $FB   ; word
+ZP_BACKPTR_VEC = $FB   ; word
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $F9  ; word
 ZP_ATIME_1 = $F8    ; byte
 ZP_ATIME_2 = $F7    ; byte
 
-; All values in the time array will be < FAR_TIME, except never considered
+; All values in the time array will be <= FAR_TIME, except never considered
 ; cells that are 255. Limits how far the algorithm will expand the boundary,
 ; decreasing makes the algorithm faster
 FAR_TIME = 240
@@ -135,8 +135,8 @@ _FMM_X_1_Y_1 = 1+1*FMM_WIDTH
 _FMM_SIZE = FMM_WIDTH * FMM_HEIGHT
 _FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
 
-watch list_backptr
-watch ZP_HEAP_PTR
+watch fmm_backptr
+watch ZP_BACKPTR_VEC
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
 watch ZP_ATIME_1
@@ -149,7 +149,7 @@ watch ZP_ATIME_2
 ; Touches: A
 ;-------------------------------------------------------------------------------
 defm            fmm_setinput
-                LDA #>/1 - list_backptr
+                LDA #>/1 - fmm_backptr
                 STA _fmm_pshiftin+1
                 endm
 
@@ -164,7 +164,7 @@ defm            fmm_setoutput
                 STA _fmm_resetpage+1
                 LDA #>/1
                 SEC
-                SBC #>list_backptr
+                SBC #>fmm_backptr
                 STA _fmm_pshiftout+1
                 endm
 
@@ -190,7 +190,7 @@ defm            fmm_setcallback
 ; Parameters: none
 ; Touches: A,X,Y,ZP_OUTPUT_VEC
 ;-------------------------------------------------------------------------------
-fmm_reset       LDY #0 ; this is the low address byte, but arrival time should be page aligned
+fmm_reset       LDY #0 ; low address byte = 0, because we assume page align
                 STY ZP_OUTPUT_VEC
 _fmm_resetpage  LDX #42 ; mutated
                 STX ZP_OUTPUT_VEC+1        
@@ -217,35 +217,36 @@ _fmm_resetpage  LDX #42 ; mutated
 ;-------------------------------------------------------------------------------
 fmm_seed        TYA
                 CLC
-                ADC #>list_backptr ; we shift the high byte to point to the
-                TAY                ; list_backptr array. Low byte not needed
-                LDA #0             ; as we assume that list_backptr is aligned
+                ADC #>fmm_backptr ; we shift the high byte to point to the
+                TAY                ; fmm_backptr array. Low byte not needed
+                LDA #0             ; as we assume that fmm_backptr is aligned
                 JMP pri_set ; tail call to set the priority of the cell        
 
 ;-------------------------------------------------------------------------------
 ; fmm_run()
-;       
+;       Runs the algorithm (reset and seeds should've been called before). Once
+;       the algorithm is complete, the output table will contain arrival times
+;       (distance), starting from the seeds.
+; Paramters: none
+; Touches: A, X, Y 
 ;-------------------------------------------------------------------------------
-fmm_run         JSR pri_dequeue
+fmm_run         JSR pri_dequeue ; A = priority, X = heap lo, Y = heap hi
                 BCS fmm_return  ; priority list was empty, exit
-                CMP #FAR_TIME
-                BCS fmm_return  ; priority is beyond FAR_TIME, exit
-                PHA ; store the priority
-                TXA
-                SEC
-                SBC #_FMM_X_2_Y_2 ; shift two rows and two columns
-                STA ZP_HEAP_PTR
+                PHA ; push priority to stack
+                TXA ; NOTICE! carry is cleared so that...
+                SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
+                STA ZP_BACKPTR_VEC
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
                 TYA
                 SBC #0  ;
-                STA ZP_HEAP_PTR+1 ; ZP_TMP_A points now to the heapptrs, but shifted two rows / columns
+                STA ZP_BACKPTR_VEC+1 ; ZP_TMP_A points to fmm_backptr[x-2,y-2]
                 CLC
-_fmm_pshiftout  ADC #42 ; mutated code so the user can choose where to write output
+_fmm_pshiftout  ADC #42 ; mutated code so user can choose where to put output
                 STA ZP_OUTPUT_VEC+1 ; ZP_TMP_B points now to arrival times
-                LDA ZP_HEAP_PTR+1
+                LDA ZP_BACKPTR_VEC+1
                 CLC
-_fmm_pshiftin   ADC #42 ; mutated code so the user can choose where to read input
+_fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 STA ZP_INPUT_VEC+1
                 PLA
                 LDY #_FMM_X_2_Y_2
@@ -256,17 +257,27 @@ _fmm_pshiftin   ADC #42 ; mutated code so the user can choose where to read inpu
                 JSR _fmm_consider
                 LDY #_FMM_X_2_Y_1   ; consider the cell below
                 JSR _fmm_consider
-                LDY #_FMM_X_2_Y_3    ; consider cell above
+                LDY #_FMM_X_2_Y_3   ; consider cell above
                 JSR _fmm_consider
                 JMP fmm_run
 fmm_return      RTS
 
 ;-------------------------------------------------------------------------------
-; consider a neighbour
-; Y: index of the cell to be considered, relative to ZP_TMP_* vectors
+; _fmm_consider(Y)
+;       This is a private method for the FMM. This considers a cell neigboring
+;       a just-accepted cell. If the new cell is already accepted, this returns
+;       immediately. Otherwise, it computes the arrival time using the callback
+;       function and inserts the new cell to the priority queue. Notice that if
+;       we ever consider a new cell twice before it is accepted, the second time
+;       it is considered its priority can only be lower. So we can just set the
+;       priority of the cell; priority_list.asm will check if the new cell is 
+;       already in the queue and move it from its current location
+; Parameters:
+;       Y: index of the cell to be considered, relative to ZP_TMP_* vectors
+; Touches: A, X, Y, ZP_ATIME_1, ZP_ATIME_2
 ;-------------------------------------------------------------------------------
 _fmm_consider   LDA (ZP_OUTPUT_VEC),y
-                CMP #FAR_TIME
+                CMP #FAR_TIME+1
                 BCC fmm_return ; this cell has already been accepted
                 DEY  ; shift one left
                 LDA (ZP_OUTPUT_VEC),y
@@ -284,7 +295,7 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_2
                 TYA    
-                ADC #_FMM_X_0_Y_2-1; shift two rows up (2*32), note that carry is set
+                ADC #_FMM_X_0_Y_2-1; shift two rows up, note that carry is set
                 TAY
                 LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_2
@@ -307,15 +318,15 @@ _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 fmm_continue
 @pushto_queue   CLC
                 ADC ZP_ATIME_1 ; add relative time to smaller arrival time
-                CMP #FAR_TIME
-                BCS fmm_return ; the new time is >= FAR_TIME so stop now
+                CMP #FAR_TIME+1
+                BCS fmm_return ; the new time is > FAR_TIME so stop now
                 STA ZP_ATIME_1 ; ATIME_1 is now the new arrival time
                 TYA              ; A = relative index to the cell
                 CLC
-                ADC ZP_HEAP_PTR ; add A to ZP_HEAP_PTR (word)
+                ADC ZP_BACKPTR_VEC ; add A to ZP_BACKPTR_VEC (word)
                 TAX  ; X = low address
                 LDA #0
-                ADC ZP_HEAP_PTR+1
+                ADC ZP_BACKPTR_VEC+1
                 TAY ; Y = high address 
                 LDA ZP_ATIME_1 ; A = priority
                 JMP pri_set ; tail call to setting priority
@@ -324,7 +335,7 @@ fmm_continue
 ; DATA
 ;-------------------------------------------------------------------------------
 Align
-list_backptr    dcb _FMM_SIZE,255
+fmm_backptr     dcb _FMM_SIZE,255
 
 
 
