@@ -55,7 +55,18 @@ incasm "fast_marching.asm"
                 LDY #>START_LOC2
                 JSR fmm_seed
                 JSR fmm_run
+                JSR draw
                 LDA #0
+                STA $D020 ; border black
+                LDA #0
+                STA $D021 ; background black
+
+
+@loop           JMP @loop
+                
+             
+; ---
+draw            LDA #0
                 STA ZP_1
                 STA ZP_2
                 STA ZP_SCREEN
@@ -107,15 +118,8 @@ incasm "fast_marching.asm"
                 DEC ZP_MAP+1
                 CPX #255
                 BNE @copyloop
-                LDA #0
-                STA $D020 ; border black
-                LDA #0
-                STA $D021 ; background black
+                RTS
 
-
-@loop           JMP @loop
-                
-             
 ; callbacks shouldn't touch ys
 ; callback get X, which is the relative distance between the two cells
 callback1       LDA (ZP_INPUT_VEC),y ; this loads the 
