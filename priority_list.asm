@@ -5,6 +5,8 @@
 ; mod(x,NUM_LISTS) possible using AND).
 NUM_LISTS = 16
 
+ZP_PRI_TEMP = $04
+
 ; the list shall always contain only elements with priority <= MAX_PRIORITY
 MAX_PRIORITY = 240
 
@@ -40,10 +42,11 @@ watch pri_lo
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
 pri_set         PHA
-                STX @mutant+1
-                STY @mutant+2
-@mutant         LDX $4242
-                CPX #255
+                STX ZP_PRI_TEMP
+                STY ZP_PRI_TEMP+1
+                LDY #0
+                LDA (ZP_PRI_TEMP),y
+                CMP #255
                 BNE @found_elem
                 LDX list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
@@ -61,17 +64,15 @@ pri_set         PHA
                 STA @mutant3+2
                 LDA #255
 @mutant3        STA $4242
-@setptr         LDA @mutant+1     ; *ptr = X
-                STA @mutant2+1
-                LDA @mutant+2
-                STA @mutant2+2
-@mutant2        STX $4242
-@found_elem     PLA
+@setptr         TXA
+                STA (ZP_PRI_TEMP),y
+@found_elem     TAX
+                PLA
                 AND #NUM_LISTS-1
                 JSR list_move ; move element X to list A =priority&(NUMLISTS-1))
-                LDA @mutant+1 ; ptrs[x] = ptr
+                LDA ZP_PRI_TEMP ; ptrs[x] = ptr
                 STA pri_lo,x ; note that list_move left X unchanged
-                LDA @mutant+2
+                LDA ZP_PRI_TEMP+1
                 STA pri_hi,x
                 RTS
 
