@@ -223,6 +223,11 @@ fmm_seed        TYA
                 JMP pri_set ; tail call to set the priority of the cell        
 
 ;-------------------------------------------------------------------------------
+; Internally used return, should be near the branch
+;-------------------------------------------------------------------------------
+_fmm_return     RTS
+
+;-------------------------------------------------------------------------------
 ; fmm_run()
 ;       Runs the algorithm (reset and seeds should've been called before). Once
 ;       the algorithm is complete, the output table will contain arrival times
@@ -231,7 +236,7 @@ fmm_seed        TYA
 ; Touches: A, X, Y 
 ;-------------------------------------------------------------------------------
 fmm_run         JSR pri_dequeue ; A = priority, X = heap lo, Y = heap hi
-                BCS fmm_return  ; priority list was empty, exit
+                BCS _fmm_return  ; priority list was empty, exit
                 TXA ; NOTICE! carry is cleared so that...
                 SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
                 STA ZP_BACKPTR_VEC
@@ -250,19 +255,14 @@ _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 LDA pri_base
                 LDY #_FMM_X_2_Y_2
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
-                LDY #_FMM_X_1_Y_2   ; consider the cell on the left
-                JSR _fmm_consider
-                LDY #_FMM_X_3_Y_2   ; consider the cell on the right
-                JSR _fmm_consider
-                LDY #_FMM_X_2_Y_1   ; consider the cell below
-                JSR _fmm_consider
-                LDY #_FMM_X_2_Y_3   ; consider cell above
-                JSR _fmm_consider
+                _fmm_consider _FMM_X_1_Y_2
+                _fmm_consider _FMM_X_3_Y_2
+                _fmm_consider _FMM_X_2_Y_1
+                _fmm_consider _FMM_X_2_Y_3
                 JMP fmm_run
-fmm_return      RTS
 
 ;-------------------------------------------------------------------------------
-; _fmm_consider(Y)
+; macro _fmm_consider /1
 ;       This is a private method for the FMM. This considers a cell neigboring
 ;       a just-accepted cell. If the new cell is already accepted, this returns
 ;       immediately. Otherwise, it computes the arrival time using the callback
@@ -272,30 +272,26 @@ fmm_return      RTS
 ;       priority of the cell; priority_list.asm will check if the new cell is 
 ;       already in the queue and move it from its current location
 ; Parameters:
-;       Y: index of the cell to be considered, relative to ZP_TMP_* vectors
+;       /1: index of the cell to be considered, relative to ZP_TMP_* vectors
 ; Touches: A, X, Y, ZP_ATIME_1, ZP_ATIME_2
 ;-------------------------------------------------------------------------------
-_fmm_consider   LDA (ZP_OUTPUT_VEC),y
+defm            _fmm_consider
+                LDY #/1 ; center cell
+                LDA (ZP_OUTPUT_VEC),y
                 CMP #FAR_TIME+1
-                BCC fmm_return ; this cell has already been accepted
-                DEY  ; shift one left
+                BCC @end ; this cell has already been accepted
+                LDY #/1-1  ; cell on the left
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_1
-                INY  ; shift two right
-                INY
+                LDY #/1+1 ; cell on the right
                 LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_1
                 BCS @left_le_right
                 STA ZP_ATIME_1 ; ATIME_1 is smaller of the horizontal times
-                SEC
-@left_le_right  TYA 
-                SBC #_FMM_X_1_Y_1 ; shift left and down, carry is guaranteed set
-                TAY
+@left_le_right  LDY #/1-FMM_WIDTH ; cell below
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_2
-                TYA    
-                ADC #_FMM_X_0_Y_2-1; shift two rows up, note that carry is set
-                TAY
+                LDY #/1+FMM_WIDTH ; cell above
                 LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_2
                 BCS @bottom_le_top
@@ -309,16 +305,18 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
                 LDX ZP_ATIME_2
                 STX ZP_ATIME_1
 @ispositive     TAX  ; X is now the relative arrive time of the two cells
-                TYA       ; y still is the cell index
-                SEC
-                SBC #FMM_WIDTH   ; shift one down = go back to the center
-                TAY
+                LDY #/1 ; center cell
+                JSR _fmm_callback
+@end            
+                endm
+
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
+
 fmm_continue
 @pushto_queue   CLC
                 ADC ZP_ATIME_1 ; add relative time to smaller arrival time
                 CMP #FAR_TIME+1
-                BCS fmm_return ; the new time is > FAR_TIME so stop now
+                BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
                 PHA ; push the new arrival time to stack
                 TYA              ; A = relative index to the cell
                 ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
@@ -327,7 +325,12 @@ fmm_continue
                 ADC ZP_BACKPTR_VEC+1
                 TAY ; Y = high address 
                 PLA ; A = priority
-                JMP pri_set ; tail call to setting priority
+                JMP pri_set ; call setting priority
+
+;-------------------------------------------------------------------------------
+; Internally used return, should be near the branch
+;-------------------------------------------------------------------------------
+_fmm_return2     RTS
 
 ;-------------------------------------------------------------------------------
 ; DATA
