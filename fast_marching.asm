@@ -320,14 +320,14 @@ fmm_continue
                 ADC ZP_ATIME_1 ; add relative time to smaller arrival time
                 CMP #FAR_TIME+1
                 BCS fmm_return ; the new time is > FAR_TIME so stop now
-                STA ZP_ATIME_1 ; ATIME_1 is now the new arrival time
+                PHA ; push the new arrival time to stack
                 TYA              ; A = relative index to the cell
                 ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
                 TAX  ; X = low address
                 LDA #0
                 ADC ZP_BACKPTR_VEC+1
                 TAY ; Y = high address 
-                LDA ZP_ATIME_1 ; A = priority
+                PLA ; A = priority
                 JMP pri_set ; tail call to setting priority
 
 ;-------------------------------------------------------------------------------
