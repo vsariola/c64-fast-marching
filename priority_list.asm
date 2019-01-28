@@ -83,7 +83,7 @@ pri_set         PHA
 ; 
 ; Parameters: none
 ; Returns:
-;       A = priority of the cell dequeued
+;       (you can get the priority by reading pri_base)
 ;       X = low address of the dequeued cell
 ;       Y = high address of the dequeued cell
 ;       carry: set if there are no more items
@@ -112,7 +112,6 @@ pri_dequeue     LDA pri_base
                 JSR list_move
                 LDX @mutant5+1
                 LDY @mutant5+2
-                LDA pri_base
                 CLC  ; carry not set => we've got an item
 @done           RTS
 

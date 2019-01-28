@@ -232,7 +232,6 @@ fmm_seed        TYA
 ;-------------------------------------------------------------------------------
 fmm_run         JSR pri_dequeue ; A = priority, X = heap lo, Y = heap hi
                 BCS fmm_return  ; priority list was empty, exit
-                PHA ; push priority to stack
                 TXA ; NOTICE! carry is cleared so that...
                 SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
                 STA ZP_BACKPTR_VEC
@@ -248,7 +247,7 @@ _fmm_pshiftout  ADC #42 ; mutated code so user can choose where to put output
                 CLC
 _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 STA ZP_INPUT_VEC+1
-                PLA
+                LDA pri_base
                 LDY #_FMM_X_2_Y_2
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
                 LDY #_FMM_X_1_Y_2   ; consider the cell on the left
