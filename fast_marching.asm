@@ -288,9 +288,9 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_1
                 BCS @left_le_right
                 STA ZP_ATIME_1 ; ATIME_1 is smaller of the horizontal times
-@left_le_right  TYA 
                 SEC
-                SBC #_FMM_X_1_Y_1 ; shift left and down
+@left_le_right  TYA 
+                SBC #_FMM_X_1_Y_1 ; shift left and down, carry is guaranteed set
                 TAY
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_ATIME_2
@@ -301,8 +301,8 @@ _fmm_consider   LDA (ZP_OUTPUT_VEC),y
                 CMP ZP_ATIME_2
                 BCS @bottom_le_top
                 STA ZP_ATIME_2 ; ATIME_2 is smaller of the vertical times
-@bottom_le_top  LDA ZP_ATIME_2
                 SEC
+@bottom_le_top  LDA ZP_ATIME_2
                 SBC ZP_ATIME_1
                 BCS @ispositive
                 EOR #$FF ; A = 255-A
