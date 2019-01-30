@@ -240,6 +240,7 @@ fmm_seed        TYA
                 TXA
                 STA ZP_PRI_TEMP
                 LDA #0             ; as we assume that fmm_backptr is aligned
+                PHA
                 JMP pri_set ; tail call to set the priority of the cell    
 
 ;-------------------------------------------------------------------------------
@@ -275,7 +276,7 @@ _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 LDA pri_base
                 LDY #_FMM_X_2_Y_2
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
-                _fmm_consider _FMM_X_1_Y_2
+                _fmm_consider _FMM_X_1_Y_2 ; aka "accept" the cell
                 _fmm_consider _FMM_X_3_Y_2
                 _fmm_consider _FMM_X_2_Y_1
                 _fmm_consider _FMM_X_2_Y_3
@@ -299,7 +300,7 @@ defm            _fmm_consider
                 LDY #/1 ; center cell
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #FAR_TIME+1
-                BCC @end ; this cell has already been accepted
+                BCC @skip_this_cell ; this cell has already been accepted
                 LDY #/1-1  ; cell on the left
                 LDA (ZP_OUTPUT_VEC),y
                 STA ZP_TIME
@@ -316,7 +317,7 @@ defm            _fmm_consider
                 LDA (ZP_OUTPUT_VEC),y ; A is smaller of the vertical times
 @bottom_le_top  LDY #/1 ; center cell
                 JSR _consider_tail
-@end
+@skip_this_cell
                 endm
 
 _consider_tail  TAX ; the smaller of vertical vertical times is stored in X
@@ -325,7 +326,7 @@ _consider_tail  TAX ; the smaller of vertical vertical times is stored in X
                 BCS @ispositive
                 EOR #$FF ; A = 255-A
                 ADC #1 ; carry is guaranteeed to be clear so add 1
-                STX ZP_TIME
+                STX ZP_TIME ; ZP_TIME is now the smaller of the two times
 @ispositive     TAX  ; X is now the relative arrive time of the two cells
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
@@ -336,14 +337,14 @@ fmm_continue
                 ADC ZP_TIME ; add relative time to smaller arrival time
                 CMP #FAR_TIME+1
                 BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
-                TAX ; X = priority
+                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
+                PHA   ; push it to stack
                 TYA              ; A = relative index to the cell
                 ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
                 STA ZP_PRI_TEMP   ; ZP_PRI_TEMP points to the back pointer
                 LDA #0
                 ADC ZP_BACKPTR_VEC+1
-                STA ZP_PRI_TEMP+1
-                TXA ; A = priority
+                STA ZP_PRI_TEMP+1 ; Flow into pri_set
 ;-------------------------------------------------------------------------------
 ; pri_set(A,X,Y)
 ;       Sets the priority of the cell in the address ptr = $YX to A. The ptr 
@@ -367,14 +368,12 @@ fmm_continue
 ; 
 ; 
 ; Parameters:
-;       A = priority of the cell & (NUM_LISTS-1)
-;       X = low byte of the memory address containing the back pointer
-;       Y = high byte of the memoty address containing the back pointer
+;       STACK = priority of the cell & (NUM_LISTS-1)
+;       ZP_PRI_TEMP = low byte of the address containing the back pointer
+;       ZP_PRI_TEMP+1 = high byte of the address containing the back pointer
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
-pri_set         AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
-                PHA   ; store the correct list head in stack
-                LDY #0
+pri_set         LDY #0
                 LDA (ZP_PRI_TEMP),y
                 TAX
                 CPX #255
@@ -382,7 +381,6 @@ pri_set         AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
                 LDX list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
                 BEQ @reuse       ; if there's no unused elements, we jump
-
                 TXA
                 LDY #0
                 STA (ZP_PRI_TEMP),y
