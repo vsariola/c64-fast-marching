@@ -23,7 +23,6 @@ watch ZP_COLOR
 watch ZP_MAP
 
 * = $2100
-incasm "circular_list.asm"
 incasm "priority_list.asm"
 incasm "fast_marching.asm"
 

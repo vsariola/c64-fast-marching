@@ -36,7 +36,6 @@
         <PostBuildCommands />
     </BuildEvents>
     <BuildList>
-        <FileName>circular_list.asm</FileName>
         <FileName>priority_list.asm</FileName>
         <FileName>fast_marching.asm</FileName>
     </BuildList>
@@ -44,17 +43,6 @@
     <PaddingByte>0</PaddingByte>
     <AssyBinaryFileLocation />
     <SourceFiles>
-        <SourceFile>
-            <Name>circular_list.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>True</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
         <SourceFile>
             <Name>fast_marching.asm</Name>
             <PrgName />
@@ -84,18 +72,7 @@
             <IncludeInBuild>True</IncludeInBuild>
             <Regions />
             <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>test_circular_list.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>False</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
+            <Bookmarks>92,</Bookmarks>
             <Topmost>False</Topmost>
             <FileOpen>True</FileOpen>
         </SourceFile>
@@ -118,18 +95,7 @@
             <Regions />
             <Breakpoints />
             <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>test_priority_list.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>False</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
+            <Topmost>True</Topmost>
             <FileOpen>True</FileOpen>
         </SourceFile>
     </SourceFiles>
