@@ -52,8 +52,22 @@ pri_set         PHA
                 BNE @found_elem
                 LDX list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
-                BNE @setptr       ; if there's unused elements, we jump
-                LDA pri_base
+                BEQ @reuse       ; if there's no unused elements, we jump
+                
+                PLA ; A was the priority  
+                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
+                JSR list_add
+                TYA
+                TAX
+                LDY #0
+                STA (ZP_PRI_TEMP),y
+                LDA ZP_PRI_TEMP ; ptrs[y] = ptr
+                STA pri_lo,x ; note that list_move left X unchanged
+                LDA ZP_PRI_TEMP+1
+                STA pri_hi,x
+                RTS
+                
+@reuse          LDA pri_base
 @loop           SBC #0 ; carry is guaranteed to be cleared here 
                 AND #NUM_LISTS-1
                 TAY

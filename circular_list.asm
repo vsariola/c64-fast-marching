@@ -83,5 +83,27 @@ list_move       PHA   ; store the new list for now, remove from the old list fir
                 STA list_next,x
                 RTS
 
+;------------------------------
+; inserts new element as the first element of list A
+; return Y, the index of the new element
+;------------------------------ 
+list_add        PHA   ; store the new list for now
+                LDY #255
+                LDX list_next,y ; x: first free cell, you make sure there is one
+                LDA list_next,x ; a: the current follower of x
+                STA list_next,y ; empty list points now to current follower
+                PLA ; A: head, X: new, Y: 255
+                STA list_prev,x ; prev[new] = head              
+                TAY ; A: head, X: new, Y: head
+                TXA ; A: new, X: new, Y: head
+                LDX list_next,y ; A: new, X: old, Y: head
+                STA list_next,y ; next[head] = new
+                STA list_prev,x ; prev[old] = new
+                TAY  ; A: new, X: old, Y: new
+                TXA  ; A: old, X: old, Y: new
+                STA list_next,y ; next[new] = old
+                RTS
+
+
 list_next       dcb 256,0
 list_prev       dcb 256,0
