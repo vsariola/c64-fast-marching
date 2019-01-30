@@ -6,6 +6,7 @@
 NUM_LISTS = 16
 
 ZP_PRI_TEMP = $04
+ZP_CIRC_TEMP = $03
 
 ; the list shall always contain only elements with priority <= MAX_PRIORITY
 MAX_PRIORITY = 240
@@ -13,6 +14,8 @@ MAX_PRIORITY = 240
 watch pri_base
 watch pri_hi
 watch pri_lo
+watch list_next
+watch list_prev
 
 ;-------------------------------------------------------------------------------
 ; pri_set(A,X,Y)
@@ -42,8 +45,9 @@ watch pri_lo
 ;       Y = high byte of the memoty address containing the back pointer
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
-pri_set         PHA
-                STX ZP_PRI_TEMP
+pri_set         AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
+                PHA   ; store the correct list head in stack
+                STX ZP_PRI_TEMP   ; ZP_PRI_TEMP points to the back pointer
                 STY ZP_PRI_TEMP+1
                 LDY #0
                 LDA (ZP_PRI_TEMP),y
@@ -53,19 +57,18 @@ pri_set         PHA
                 LDX list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
                 BEQ @reuse       ; if there's no unused elements, we jump
-                
-                PLA ; A was the priority  
-                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
-                JSR list_add
-                TYA
-                TAX
+
+                TXA
                 LDY #0
                 STA (ZP_PRI_TEMP),y
                 LDA ZP_PRI_TEMP ; ptrs[y] = ptr
                 STA pri_lo,x ; note that list_move left X unchanged
                 LDA ZP_PRI_TEMP+1
                 STA pri_hi,x
-                RTS
+
+                LDA list_next,x ; a: the current follower of x
+                STA list_next+255 ; empty list points now to current follower
+                JMP @list_insert
                 
 @reuse          LDA pri_base
 @loop           SBC #0 ; carry is guaranteed to be cleared here 
@@ -81,15 +84,32 @@ pri_set         PHA
                 LDA #255
 @mutant3        STA $4242     
                 LDY #0
-@setptr         TXA
-                STA (ZP_PRI_TEMP),y
-                LDA ZP_PRI_TEMP ; ptrs[x] = ptr
+                TXA 
+                STA (ZP_PRI_TEMP),y  ; set the back pointer (*ptr = x)
+                LDA ZP_PRI_TEMP ; set the forward  pointr (ptrs[x] = ptr)
                 STA pri_lo,x ; note that list_move left X unchanged
                 LDA ZP_PRI_TEMP+1
                 STA pri_hi,x
-@found_elem     PLA ; A was the priority
-                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
-                JMP list_move ; tail call to move eement X to list A
+@found_elem     STX ZP_CIRC_TEMP
+                LDA list_next,x ; following lines link the next[x] and prev[x]
+                LDY list_prev,x ; elements pointing to each other
+                STA list_next,y
+                TAX
+                TYA
+                STA list_prev,x ; the old list is now linked
+                LDX ZP_CIRC_TEMP
+@list_insert    PLA ; A: head, X: new
+                STA list_prev,x ; prev[new] = head              
+                TAY ; A: head, X: new, Y: head
+                TXA ; A: new, X: new, Y: head
+                LDX list_next,y ; A: new, X: old, Y: head
+                STA list_next,y ; next[head] = new
+                STA list_prev,x ; prev[old] = new
+                TAY  ; A: new, X: old, Y: new
+                TXA  ; A: old, X: old, Y: new
+                STA list_next,y ; next[new] = old
+                RTS
+
 
 ;-------------------------------------------------------------------------------
 ; pri_dequeue()
@@ -113,17 +133,27 @@ pri_dequeue     LDA pri_base
                 JMP pri_dequeue
 @found          LDA list_next,x
                 TAX
-                LDA pri_lo,x
+                LDA pri_lo,x  ; destroy the forward ptr
                 STA @mutant5+1
                 LDA pri_hi,x
                 STA @mutant5+2
                 LDA #255
 @mutant5        STA $4242
-                ;LDA #0  ; these are not really necessary
-                ;STA pri_lo,x
-                ;STA pri_hi,x
-                LDA #255
-                JSR list_move
+                ; deleting an element from list
+                TXA 
+                PHA
+                LDA list_next,x ; following lines link the next[x] and prev[x]
+                LDY list_prev,x ; a: after, x: element, y: before
+                STA list_next,y ; next[before] = after
+                TAX ; a: after, x: after, y: before
+                TYA ; a: before, x: after, y: before
+                STA list_prev,x ; prev[after] = before
+                PLA
+                LDX list_next+255 ; A: elem, X: old, Y: before
+                STA list_next+255 ; next[255] = elem
+                TAY             ; A: elem, X: old, Y: elem
+                TXA             ; A: old, X: old, Y: elem
+                STA list_next,y ; next[elem] = old
                 LDX @mutant5+1
                 LDY @mutant5+2
                 CLC  ; carry not set => we've got an item
@@ -143,9 +173,46 @@ pri_reset       JSR pri_dequeue
                 STA pri_base
                 RTS
 
+;------------------------------
+; initializes the A empty lists + one circular list with all unused elements
+; note that A should be < 128
+; touches 
+; For example, if A = 2, the pointers are initialized like this
+; list_next[0] = 0, list_prev[0] = 0 <- this is an empty list
+; list_next[1] = 1, list_prev[1] = 1 <- this is an empty list_init
+; list_next[2] = 3, list_prev[2] = 255 <- rest of the elements are a circular
+; list_next[3] = 4, list_prev[3] = 2      list of unused elements
+;------------------------------       
+list_init       TAX
+                TAY              ; keep the input parameter in Y 
+@loop1          TXA              ; this loop creates the empty lists
+                STA list_next,x
+                STA list_prev,x
+                DEX
+                BPL @loop1
+                STY @mutatecmp+1
+@loop2          TYA              ; this loop sets the list_prev values of the
+                INY              ; circular list
+                BEQ @loop3 
+                STA list_prev,y
+                JMP @loop2
+@loop3          TYA              ; this loop set the list_next values of the
+                DEY              ; circular list
+                STA list_next,y
+@mutatecmp      CPY #42          ; when looping backwards, we should end before
+                BNE @loop3       ; we overwrite the empty lists
+                LDA #255
+                STA list_prev,y  ; finally, we connect the ends of the 
+                TAX              ; circular list
+                TYA 
+                STA list_next,x
+                RTS 
+
 ;-------------------------------------------------------------------------------
 ; DATA
 ;-------------------------------------------------------------------------------
 pri_base        byte 0          ; priority of the lowest element in the list
 pri_hi          dcb 256,0       ; list of pointers to the backptr
 pri_lo          dcb 256,0
+list_next       dcb 256,0
+list_prev       dcb 256,0

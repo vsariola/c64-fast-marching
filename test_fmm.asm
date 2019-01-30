@@ -8,7 +8,6 @@ screen_mem = $0400
 ; 10 SYS4096
 
 * = $1900
-incasm "circular_list.asm"
 incasm "priority_list.asm"
 incasm "fast_marching.asm"
 
