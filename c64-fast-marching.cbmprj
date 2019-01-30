@@ -36,7 +36,6 @@
         <PostBuildCommands />
     </BuildEvents>
     <BuildList>
-        <FileName>priority_list.asm</FileName>
         <FileName>fast_marching.asm</FileName>
     </BuildList>
     <DetermineBuildOrder>1</DetermineBuildOrder>
@@ -64,17 +63,6 @@
             <Bookmarks />
             <Topmost>False</Topmost>
             <FileOpen>False</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>priority_list.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>True</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks>92,</Bookmarks>
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
         </SourceFile>
         <SourceFile>
             <Name>test_fmm.asm</Name>

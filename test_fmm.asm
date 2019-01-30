@@ -8,7 +8,6 @@ screen_mem = $0400
 ; 10 SYS4096
 
 * = $1900
-incasm "priority_list.asm"
 incasm "fast_marching.asm"
 
 * = $0801
@@ -31,7 +30,7 @@ incasm "fast_marching.asm"
                 JSR fmm_run
 @loop           JMP @loop
                 
-       
+  
         
 ; callbacks shouldn't touch ys
 ; callback get X, which is the relative distance between the two cells
