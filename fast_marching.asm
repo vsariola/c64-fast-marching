@@ -116,8 +116,7 @@
 ZP_BACKPTR_VEC = $FB   ; word
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $F9  ; word
-ZP_ATIME_1 = $F8    ; byte
-ZP_ATIME_2 = $F7    ; byte
+ZP_TIME = $F8    ; byte
 
 ; All values in the time array will be <= FAR_TIME, except never considered
 ; cells that are 255. Limits how far the algorithm will expand the boundary,
@@ -139,8 +138,7 @@ watch fmm_backptr
 watch ZP_BACKPTR_VEC
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
-watch ZP_ATIME_1
-watch ZP_ATIME_2
+watch ZP_TIME
 
 ;-------------------------------------------------------------------------------
 ; macro fmm_setinput address
@@ -273,7 +271,7 @@ _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
 ;       already in the queue and move it from its current location
 ; Parameters:
 ;       /1: index of the cell to be considered, relative to ZP_TMP_* vectors
-; Touches: A, X, Y, ZP_ATIME_1, ZP_ATIME_2
+; Touches: A, X, Y, ZP_TIME, ZP_ATIME_2
 ;-------------------------------------------------------------------------------
 defm            _fmm_consider
                 LDY #/1 ; center cell
@@ -282,28 +280,25 @@ defm            _fmm_consider
                 BCC @end ; this cell has already been accepted
                 LDY #/1-1  ; cell on the left
                 LDA (ZP_OUTPUT_VEC),y
-                STA ZP_ATIME_1
+                STA ZP_TIME
                 LDY #/1+1 ; cell on the right
                 LDA (ZP_OUTPUT_VEC),y
-                CMP ZP_ATIME_1
+                CMP ZP_TIME
                 BCS @left_le_right
-                STA ZP_ATIME_1 ; ATIME_1 is smaller of the horizontal times
+                STA ZP_TIME ; ATIME_1 is smaller of the horizontal times
 @left_le_right  LDY #/1-FMM_WIDTH ; cell below
                 LDA (ZP_OUTPUT_VEC),y
-                STA ZP_ATIME_2
                 LDY #/1+FMM_WIDTH ; cell above
-                LDA (ZP_OUTPUT_VEC),y
-                CMP ZP_ATIME_2
-                BCS @bottom_le_top
-                STA ZP_ATIME_2 ; ATIME_2 is smaller of the vertical times
+                CMP (ZP_OUTPUT_VEC),y
+                BCC @bottom_le_top
+                LDA (ZP_OUTPUT_VEC),y ; A is smaller of the vertical times
+@bottom_le_top  TAX ; the smaller of vertical vertical times is stored in X
                 SEC
-@bottom_le_top  LDA ZP_ATIME_2
-                SBC ZP_ATIME_1
+                SBC ZP_TIME
                 BCS @ispositive
                 EOR #$FF ; A = 255-A
                 ADC #1 ; carry is guaranteeed to be clear so add 1
-                LDX ZP_ATIME_2
-                STX ZP_ATIME_1
+                STX ZP_TIME
 @ispositive     TAX  ; X is now the relative arrive time of the two cells
                 LDY #/1 ; center cell
                 JSR _fmm_callback
@@ -314,7 +309,7 @@ _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
 fmm_continue
 @pushto_queue   CLC
-                ADC ZP_ATIME_1 ; add relative time to smaller arrival time
+                ADC ZP_TIME ; add relative time to smaller arrival time
                 CMP #FAR_TIME+1
                 BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
                 PHA ; push the new arrival time to stack
