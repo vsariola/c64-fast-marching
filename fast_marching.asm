@@ -132,9 +132,8 @@ watch ZP_ADDR
 ; Note that FAR_TIME+maximum value returned by callback should always < 256
 FAR_TIME = 240
 
-; the priority of the largest element should always be < smallest priority + 
-; NUM_LISTS. Furthermore, NUM_LISTS should be a power of 2 (which makes
-; mod(x,NUM_LISTS) possible using AND).
+; Your callback function should always return a value < NUM_LISTS. Furthermore,
+; NUM_LISTS should be a power of 2
 NUM_LISTS = 16
 
 ; FMM_WIDTH and FMM_HEIGHT should be defined by the user
@@ -186,16 +185,13 @@ defm            fmm_setcallback
                 endm
 
 ;------------------------------
-; fmm_init(A)
+; fmm_init()
 ; 
-; Initializes the A doubly-linked empty lists + one single linked circular list
-; with all unused elements. This should be > the maximum value returned by 
-; the callback function i.e. if the callback can return 15, A should be 16
-; 
-; Note that A should be always be < 128.
+; Initializes the doubly-linked empty lists + one single linked circular list
+; with all unused elements.
 ; 
 ; What this function really does:
-; For example, if A = 2, the pointers are initialized like this
+; For example, if NUM_LISTS = 2, the pointers are initialized like this
 ; fmm_list_next[0] = 0, fmm_list_prev[0] = 0 <- this is an empty list
 ; fmm_list_next[1] = 1, fmm_list_prev[1] = 1 <- this is an empty list_init
 ; fmm_list_next[2] = 3 <- rest of the elements are a circular
@@ -203,26 +199,23 @@ defm            fmm_setcallback
 ; ... 
 ; fmm_list_next[255] = 2
 ;
-; Parameters:
-;       A = number of linked lists to initialize.
+; Parameters: none
 ; Touches: A, X, Y
 ;------------------------------       
-fmm_init        TAX
-                TAY              ; keep the input parameter in Y 
+fmm_init        LDX #NUM_LISTS
 @loop1          TXA              ; this loop creates the empty lists
                 STA fmm_list_next,x
                 STA fmm_list_prev,x
                 DEX
-                BPL @loop1
-                STY @mutatecmp+1                
+                BPL @loop1               
                 LDY #0
 @loop3          TYA              ; this loop set the fmm_list_next values of the
                 DEY              ; circular list
                 STA fmm_list_next,y
-@mutatecmp      CPY #42          ; when looping backwards, we should end before
+                CPY #NUM_LISTS  ; when looping backwards, we should end before
                 BNE @loop3       ; we overwrite the empty lists
-                TYA 
-                STA fmm_list_next,x
+                LDA #NUM_LISTS 
+                STA fmm_list_next,x ; x was 255
                 RTS 
 
 ;-------------------------------------------------------------------------------

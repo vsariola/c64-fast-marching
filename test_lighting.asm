@@ -30,7 +30,6 @@ incasm "fast_marching.asm"
 
 
 * = $1000       
-                LDA #16
                 JSR fmm_init
                 fmm_setinput map
                 fmm_setoutput time1

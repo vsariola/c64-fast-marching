@@ -18,7 +18,6 @@ incasm "fast_marching.asm"
                 fmm_setinput map
                 fmm_setoutput screen_mem
                 fmm_setcallback callback
-                LDA #16
                 JSR fmm_init
                 JSR fmm_reset
                 LDX #<START_LOC
