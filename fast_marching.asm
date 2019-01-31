@@ -19,8 +19,7 @@
 ;
 ; FMM_WIDTH = 40
 ; FMM_HEIGHT = 25
-;       ; needs to be called only firsttime:
-;       LDA #16                   ; callback should now return < 16
+;       ; needs to be called only first time:
 ;       JSR fmm_init
 ;       ; ...
 ;       ; needs to be called every time the input & output are changed
@@ -36,8 +35,11 @@
 ;       JSR fmm_run
 ;  
 ; Tips:
-;   - The maximum value for FMM_WIDTH is 63 (4*FMM_WIDTH+2 < 256)
-;   - The maximum value for FAR_TIME is 255 - maximum value returned by callback
+;   - The maximum value for FMM_WIDTH is 63
+;   - FAR_TIME determines how far the algorithm expands the boundary.
+;     The maximum value for FAR_TIME is 255 minus the maximum value returned by
+;     callback. If the maximum number you return is 15, then FAR_TIME has to be
+;     240 or less.
 ;   - The callback is responsible for bounds checking i.e. that ZP_INPUT_VEC
 ;     is within the bounds of the map. If it fails to do that, fmm_run will
 ;     likely overwrite some / all of the memory... However, it is usually
@@ -50,7 +52,7 @@
 ; How to implement the callback function:
 ;   - callback function is responsible for defining the norm and how the
 ;     map values are converted into slowness values.
-;   - Callback is the most ritical section of the code, so optimizing it will
+;   - Callback is the most critical section of the code, so optimizing it will
 ;     make the algorithm run faster.
 ;   - Callback should return with JMP fmm_continue, if the cell is considered,
 ;     or with RTS, if the cell should not be considered at all
@@ -117,7 +119,7 @@ ZP_BACKPTR_VEC = $FB   ; word
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $F9  ; word
 ZP_TEMP = $F8    ; byte
-ZP_ADDR = $02
+ZP_ADDR = $02    ; word 
 
 watch ZP_BACKPTR_VEC
 watch ZP_OUTPUT_VEC
@@ -125,7 +127,7 @@ watch ZP_INPUT_VEC
 watch ZP_TEMP
 watch ZP_ADDR
 
-; All values in the time array will be <= FAR_TIME, except never considered
+; All values in the output array will be <= FAR_TIME, except never considered
 ; cells that are 255. Limits how far the algorithm will expand the boundary,
 ; decreasing makes the algorithm faster. The list shall always contain only
 ; elements with priority <= FAR_TIME
@@ -193,9 +195,9 @@ defm            fmm_setcallback
 ; What this function really does:
 ; For example, if NUM_LISTS = 2, the pointers are initialized like this
 ; fmm_list_next[0] = 0, fmm_list_prev[0] = 0 <- this is an empty list
-; fmm_list_next[1] = 1, fmm_list_prev[1] = 1 <- this is an empty list_init
+; fmm_list_next[1] = 1, fmm_list_prev[1] = 1 <- this is an empty list
 ; fmm_list_next[2] = 3 <- rest of the elements are a circular
-; fmm_list_next[3] = 4 ;  list of unused elements
+; fmm_list_next[3] = 4    single-linked list of unused elements
 ; ... 
 ; fmm_list_next[255] = 2
 ;
