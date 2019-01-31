@@ -31,7 +31,7 @@ incasm "fast_marching.asm"
 
 * = $1000       
                 LDA #16
-                JSR list_init
+                JSR fmm_init
                 fmm_setinput map
                 fmm_setoutput time1
                 fmm_setcallback callback1
