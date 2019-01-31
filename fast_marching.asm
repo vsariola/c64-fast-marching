@@ -117,7 +117,7 @@ ZP_BACKPTR_VEC = $FB   ; word
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $F9  ; word
 ZP_TIME = $F8    ; byte
-ZP_PRI_TEMP = $04
+ZP_ADDR = $04
 ZP_CIRC_TEMP = $03
 
 ; All values in the time array will be <= FAR_TIME, except never considered
@@ -176,10 +176,9 @@ defm            fmm_setinput
 defm            fmm_setoutput   
                 LDA #>/1 + _FMM_SIZE_MINUS_1 
                 STA _fmm_resetpage+1
-                LDA #>/1
-                SEC
-                SBC #>fmm_backptr
+                LDA #>/1 - fmm_backptr
                 STA _fmm_pshiftout+1
+                DEC _fmm_pshiftout+1 ; eventually, carry will be set so dec 1
                 endm
 
 ;-------------------------------------------------------------------------------
@@ -219,8 +218,6 @@ _fmm_resetpage  LDX #42 ; mutated
                 DEC ZP_OUTPUT_VEC+1
                 DEX
                 BPL @loop
-@pri_reset      JSR pri_dequeue ; reset the priority list
-                BCC @pri_reset
                 LDA #0
                 STA pri_base
                 RTS    
@@ -236,17 +233,22 @@ _fmm_resetpage  LDX #42 ; mutated
 fmm_seed        TYA
                 CLC
                 ADC #>fmm_backptr ; we shift the high byte to point to the
-                STA ZP_PRI_TEMP+1  ; fmm_backptr array. Low byte not needed
+                STA ZP_ADDR+1  ; fmm_backptr array. Low byte not needed
+                STA ZP_BACKPTR_VEC+1
                 TXA
-                STA ZP_PRI_TEMP
+                STA ZP_ADDR
+                STA ZP_BACKPTR_VEC
                 LDA #0             ; as we assume that fmm_backptr is aligned
+                LDY #0
                 PHA
-                JMP pri_set ; tail call to set the priority of the cell    
+                JMP _fmm_set_prior ; tail call to set the priority of the cell    
 
 ;-------------------------------------------------------------------------------
-; Internally used return, should be near the branch
+; Internally used, reset the pri_base = 0, should be near the branch
 ;-------------------------------------------------------------------------------
-_fmm_return     RTS
+_fmm_cleanup    LDA #0
+                STA pri_base
+                RTS
 
 ;-------------------------------------------------------------------------------
 ; fmm_run()
@@ -256,23 +258,50 @@ _fmm_return     RTS
 ; Paramters: none
 ; Touches: A, X, Y 
 ;-------------------------------------------------------------------------------
-fmm_run         JSR pri_dequeue ; A = priority, X = heap lo, Y = heap hi
-                BCS _fmm_return  ; priority list was empty, exit
-                TXA ; NOTICE! carry is cleared so that...
+fmm_run         LDA pri_base
+                CMP #MAX_PRIORITY+1
+                BCS _fmm_cleanup    ; beyond MAX priority, we're done
+                AND #NUM_LISTS-1 ; 
+                TAX
+                CMP list_next,x
+                BNE @found
+                INC pri_base
+                JMP fmm_run
+@found          LDA list_next,x
+                TAX  ; X is the element which was dequeued
+                LDA pri_lo,x
+                ; NOTICE! carry is cleared so that...
                 SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
                 STA ZP_BACKPTR_VEC
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
-                TYA
+                LDA pri_hi,x
                 SBC #0  ;
-                STA ZP_BACKPTR_VEC+1 ; ZP_TMP_A points to fmm_backptr[x-2,y-2]
-                CLC
-_fmm_pshiftout  ADC #42 ; mutated code so user can choose where to put output
+                STA ZP_BACKPTR_VEC+1 ; ZP_BACKPTR_VEC -> &fmm_backptr[x-2,y-2]
+_fmm_pshiftout  ADC #42 ; mutated code so user choose output, carry is set
                 STA ZP_OUTPUT_VEC+1 ; ZP_TMP_B points now to arrival times
                 LDA ZP_BACKPTR_VEC+1
                 CLC
 _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 STA ZP_INPUT_VEC+1
+                LDA #255
+                LDY #_FMM_X_2_Y_2
+                STA (ZP_BACKPTR_VEC),y
+                ; deleting an element from list
+                TXA 
+                PHA
+                LDA list_next,x ; following lines link the next[x] and prev[x]
+                LDY list_prev,x ; a: after, x: element, y: before
+                STA list_next,y ; next[before] = after
+                TAX ; a: after, x: after, y: before
+                TYA ; a: before, x: after, y: before
+                STA list_prev,x ; prev[after] = before
+                PLA
+                LDX list_next+255 ; A: elem, X: old, Y: before
+                STA list_next+255 ; next[255] = elem
+                TAY             ; A: elem, X: old, Y: elem
+                TXA             ; A: old, X: old, Y: elem
+                STA list_next,y ; next[elem] = old
                 LDA pri_base
                 LDY #_FMM_X_2_Y_2
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
@@ -330,10 +359,9 @@ _consider_tail  TAX ; the smaller of vertical vertical times is stored in X
 @ispositive     TAX  ; X is now the relative arrive time of the two cells
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
-
 _fmm_return2    RTS ; should be near the branch
-fmm_continue
-@pushto_queue   CLC
+
+fmm_continue    CLC
                 ADC ZP_TIME ; add relative time to smaller arrival time
                 CMP #FAR_TIME+1
                 BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
@@ -341,12 +369,12 @@ fmm_continue
                 PHA   ; push it to stack
                 TYA              ; A = relative index to the cell
                 ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
-                STA ZP_PRI_TEMP   ; ZP_PRI_TEMP points to the back pointer
+                STA ZP_ADDR   ; ZP_ADDR points to the back pointer
                 LDA #0
                 ADC ZP_BACKPTR_VEC+1
-                STA ZP_PRI_TEMP+1 ; Flow into pri_set
+                STA ZP_ADDR+1 ; Flow into _fmm_set_prior
 ;-------------------------------------------------------------------------------
-; pri_set(A,X,Y)
+; _fmm_set_prior(A,X,Y)
 ;       Sets the priority of the cell in the address ptr = $YX to A. The ptr 
 ;       should point to the back pointer of the cell. Back pointer is a byte
 ;       containing the index of the cell in the circular list.
@@ -369,12 +397,11 @@ fmm_continue
 ; 
 ; Parameters:
 ;       STACK = priority of the cell & (NUM_LISTS-1)
-;       ZP_PRI_TEMP = low byte of the address containing the back pointer
-;       ZP_PRI_TEMP+1 = high byte of the address containing the back pointer
+;       ZP_ADDR = low byte of the address containing the back pointer
+;       ZP_ADDR+1 = high byte of the address containing the back pointer
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
-pri_set         LDY #0
-                LDA (ZP_PRI_TEMP),y
+_fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 TAX
                 CPX #255
                 BNE @found_elem
@@ -382,36 +409,36 @@ pri_set         LDY #0
                 CPX #255          ; elements
                 BEQ @reuse       ; if there's no unused elements, we jump
                 TXA
-                LDY #0
-                STA (ZP_PRI_TEMP),y
-                LDA ZP_PRI_TEMP ; ptrs[y] = ptr
+                STA (ZP_BACKPTR_VEC),y
+                LDA ZP_ADDR ; ptrs[y] = ptr
                 STA pri_lo,x ; note that list_move left X unchanged
-                LDA ZP_PRI_TEMP+1
+                LDA ZP_ADDR+1
                 STA pri_hi,x
 
                 LDA list_next,x ; a: the current follower of x
                 STA list_next+255 ; empty list points now to current follower
                 JMP @list_insert
-                
+               
 @reuse          LDA pri_base
 @loop           SBC #0 ; carry is guaranteed to be cleared here 
                 AND #NUM_LISTS-1
-                TAY
-                CMP list_next,y
+
+                TAX
+                CMP list_next,x
                 BEQ @loop
-                LDX list_next,y
-                LDA pri_lo,x
+                LDA list_next,x
+                TAX ; x is now the index of the element to use
+                LDA pri_lo,x ; destroy the old back pointer of the element
                 STA @mutant3+1
                 LDA pri_hi,x
                 STA @mutant3+2
                 LDA #255
 @mutant3        STA $4242     
-                LDY #0
                 TXA 
-                STA (ZP_PRI_TEMP),y  ; set the back pointer (*ptr = x)
-                LDA ZP_PRI_TEMP ; set the forward  pointr (ptrs[x] = ptr)
+                STA (ZP_BACKPTR_VEC),y  ; set the back pointer (*ptr = x)
+                LDA ZP_ADDR ; set the forward  pointr (ptrs[x] = ptr)
                 STA pri_lo,x ; note that list_move left X unchanged
-                LDA ZP_PRI_TEMP+1
+                LDA ZP_ADDR+1
                 STA pri_hi,x
 @found_elem     STX ZP_CIRC_TEMP
                 LDA list_next,x ; following lines link the next[x] and prev[x]
@@ -432,55 +459,6 @@ pri_set         LDY #0
                 TXA  ; A: old, X: old, Y: new
                 STA list_next,y ; next[new] = old
                 RTS
-
-
-;-------------------------------------------------------------------------------
-; pri_dequeue()
-;       Dequeues and returns the element with the lowest priority.
-; 
-; Parameters: none
-; Returns:
-;       (you can get the priority by reading pri_base)
-;       X = low address of the dequeued cell
-;       Y = high address of the dequeued cell
-;       carry: set if there are no more items
-;-------------------------------------------------------------------------------
-pri_dequeue     LDA pri_base
-                CMP #MAX_PRIORITY+1
-                BCS @done        ; beyond MAX priority, returning carry set 
-                AND #NUM_LISTS-1 ; indicates no more items
-                TAX
-                CMP list_next,x
-                BNE @found
-                INC pri_base
-                JMP pri_dequeue
-@found          LDA list_next,x
-                TAX
-                LDA pri_lo,x  ; destroy the forward ptr
-                STA @mutant5+1
-                LDA pri_hi,x
-                STA @mutant5+2
-                LDA #255
-@mutant5        STA $4242
-                ; deleting an element from list
-                TXA 
-                PHA
-                LDA list_next,x ; following lines link the next[x] and prev[x]
-                LDY list_prev,x ; a: after, x: element, y: before
-                STA list_next,y ; next[before] = after
-                TAX ; a: after, x: after, y: before
-                TYA ; a: before, x: after, y: before
-                STA list_prev,x ; prev[after] = before
-                PLA
-                LDX list_next+255 ; A: elem, X: old, Y: before
-                STA list_next+255 ; next[255] = elem
-                TAY             ; A: elem, X: old, Y: elem
-                TXA             ; A: old, X: old, Y: elem
-                STA list_next,y ; next[elem] = old
-                LDX @mutant5+1
-                LDY @mutant5+2
-                CLC  ; carry not set => we've got an item
-@done           RTS
 
 ;------------------------------
 ; initializes the A empty lists + one circular list with all unused elements
