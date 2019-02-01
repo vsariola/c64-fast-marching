@@ -349,13 +349,12 @@ defm            _fmm_consider
                 BCC @skip_this_cell ; this cell has already been accepted
                 LDY #/1-1  ; cell on the left
                 LDA (ZP_OUTPUT_VEC),y
-                STA ZP_TEMP
                 LDY #/1+1 ; cell on the right
-                LDA (ZP_OUTPUT_VEC),y
-                CMP ZP_TEMP
-                BCS @left_le_right
-                STA ZP_TEMP ; ATIME_1 is smaller of the horizontal times
-@left_le_right  LDY #/1-FMM_WIDTH ; cell below
+                CMP (ZP_OUTPUT_VEC),y
+                BCC @left_le_right
+                LDA (ZP_OUTPUT_VEC),y; ATIME_1 is smaller of the horizontal times
+@left_le_right  STA ZP_TEMP
+                LDY #/1-FMM_WIDTH ; cell below
                 LDA (ZP_OUTPUT_VEC),y
                 LDY #/1+FMM_WIDTH ; cell above
                 CMP (ZP_OUTPUT_VEC),y
