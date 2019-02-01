@@ -413,9 +413,8 @@ fmm_continue    CLC
 ;       ZP_ADDR+1 = high byte of the address containing the back pointer
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
-_fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
-                TAX
-                CPX #255
+_fmm_set_prior  LDA (ZP_BACKPTR_VEC),y                
+                CMP #255 ; A: index of the element in the list
                 BNE @list_remove
                 LDX fmm_list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
@@ -431,7 +430,8 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 LDA fmm_list_next,x ; a: the current follower of x
                 STA fmm_list_next+255; empty list points now to current follower
                 JMP @list_add
-@list_remove    STX ZP_TEMP
+@list_remove    STA ZP_TEMP
+                TAX
                 LDA fmm_list_next,x;following lines link the next[x] and prev[x]
                 LDY fmm_list_prev,x ; elements pointing to each other
                 STA fmm_list_next,y
