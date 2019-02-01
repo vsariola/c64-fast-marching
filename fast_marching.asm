@@ -416,7 +416,7 @@ fmm_continue    CLC
 _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 TAX
                 CPX #255
-                BNE @found_elem
+                BNE @list_remove
                 LDX fmm_list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
                 BEQ _fmm_return2 ; if there's no unused elements, we return
@@ -430,8 +430,8 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 STA fmm_addr_hi,x ;
                 LDA fmm_list_next,x ; a: the current follower of x
                 STA fmm_list_next+255; empty list points now to current follower
-                JMP @list_insert
-@found_elem     STX ZP_TEMP
+                JMP @list_add
+@list_remove    STX ZP_TEMP
                 LDA fmm_list_next,x;following lines link the next[x] and prev[x]
                 LDY fmm_list_prev,x ; elements pointing to each other
                 STA fmm_list_next,y
@@ -439,7 +439,7 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 TYA
                 STA fmm_list_prev,x ; the old list is now linked
                 LDX ZP_TEMP
-@list_insert    PLA ; A: head, X: new
+@list_add       PLA ; A: head, X: new
                 STA fmm_list_prev,x ; prev[new] = head              
                 TAY ; A: head, X: new, Y: head
                 TXA ; A: new, X: new, Y: head
