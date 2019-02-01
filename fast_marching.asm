@@ -355,17 +355,17 @@ defm            _fmm_consider
                 LDA (ZP_OUTPUT_VEC),y; ATIME_1 is smaller of the horizontal times
 @left_le_right  STA ZP_TEMP
                 LDY #/1-FMM_WIDTH ; cell below
-                LDA (ZP_OUTPUT_VEC),y
+                LAX (ZP_OUTPUT_VEC),y
                 LDY #/1+FMM_WIDTH ; cell above
                 CMP (ZP_OUTPUT_VEC),y
                 BCC @bottom_le_top
-                LDA (ZP_OUTPUT_VEC),y ; A is smaller of the vertical times
+                LAX (ZP_OUTPUT_VEC),y ; A is smaller of the vertical times
 @bottom_le_top  LDY #/1 ; center cell
                 JSR _fmm_tail
 @skip_this_cell
                 endm
 
-_fmm_tail       TAX ; the smaller of vertical vertical times is stored in X
+_fmm_tail       ; the smaller of vertical vertical times is stored in A and X
                 SEC
                 SBC ZP_TEMP
                 BCS @ispositive
@@ -412,13 +412,12 @@ fmm_continue    CLC
 ;       ZP_ADDR+1 = high byte of the address containing the back pointer
 ; Touches: A, X, Y
 ;-------------------------------------------------------------------------------
-_fmm_set_prior  LDA (ZP_BACKPTR_VEC),y                
+_fmm_set_prior  LAX (ZP_BACKPTR_VEC),y                
                 CMP #255 ; A: index of the element in the list
                 BNE @list_remove
-                LDX fmm_list_next+255 ; find and element from the list of unused
+                LAX fmm_list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
                 BEQ _fmm_return2 ; if there's no unused elements, we return
-                TXA
                 STA (ZP_BACKPTR_VEC),y
                 TYA ; A = relative index to the cell
                 ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
@@ -440,7 +439,6 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 STA fmm_list_next,y ; next[new] = old
                 RTS
 @list_remove    STA ZP_TEMP
-                TAX
                 LDA fmm_list_next,x;following lines link the next[x] and prev[x]
                 LDY fmm_list_prev,x ; elements pointing to each other
                 STA fmm_list_next,y
