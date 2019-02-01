@@ -36,14 +36,14 @@ incasm "fast_marching.asm"
 ; callback get X, which is the relative distance between the two cells
 callback        LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #32
-                BEQ @notwall
-                RTS  ; ... so we don't have to consider this cell at all
-@notwall        CPX #15
-                BCS @maxedout
-                LDA lookup,x
+                BNE @wall
+                CPX #15
+                BCC @do_lookup
+                LDA #15
                 JMP fmm_continue
-@maxedout       LDA #15
+@do_lookup      LDA lookup,x
                 JMP fmm_continue
+@wall           RTS  ; ... so we don't have to consider this cell at all
 
 Align
 time            dcb 1000,FAR_TIME

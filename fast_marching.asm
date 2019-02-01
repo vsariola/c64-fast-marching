@@ -429,16 +429,6 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 STA fmm_addr_hi,x ;
                 LDA fmm_list_next,x ; a: the current follower of x
                 STA fmm_list_next+255; empty list points now to current follower
-                JMP @list_add
-@list_remove    STA ZP_TEMP
-                TAX
-                LDA fmm_list_next,x;following lines link the next[x] and prev[x]
-                LDY fmm_list_prev,x ; elements pointing to each other
-                STA fmm_list_next,y
-                TAX
-                TYA
-                STA fmm_list_prev,x ; the old list is now linked
-                LDX ZP_TEMP
 @list_add       PLA ; A: head, X: new
                 STA fmm_list_prev,x ; prev[new] = head              
                 TAY ; A: head, X: new, Y: head
@@ -450,6 +440,16 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 TXA  ; A: old, X: old, Y: new
                 STA fmm_list_next,y ; next[new] = old
                 RTS
+@list_remove    STA ZP_TEMP
+                TAX
+                LDA fmm_list_next,x;following lines link the next[x] and prev[x]
+                LDY fmm_list_prev,x ; elements pointing to each other
+                STA fmm_list_next,y
+                TAX
+                TYA
+                STA fmm_list_prev,x ; the old list is now linked
+                LDX ZP_TEMP
+                JMP @list_add
 
 ;-------------------------------------------------------------------------------
 ; DATA
