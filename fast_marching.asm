@@ -115,17 +115,15 @@
 
 ; Temporary zero page registers used internally by fmm_run. Can be safely used
 ; when fmm_run is not running. 
-ZP_BACKPTR_VEC = $FB   ; word
+ZP_BACKPTR_VEC = $FB ; word
 ZP_OUTPUT_VEC = $FD ; word
-ZP_INPUT_VEC = $F9  ; word
-ZP_TEMP = $F8    ; byte
-ZP_ADDR = $02    ; word 
+ZP_INPUT_VEC = $02 ; word
+ZP_TEMP = $04 ; byte
 
 watch ZP_BACKPTR_VEC
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
 watch ZP_TEMP
-watch ZP_ADDR
 
 ; All values in the output array will be <= FAR_TIME, except never considered
 ; cells that are 255. Limits how far the algorithm will expand the boundary,
@@ -258,10 +256,8 @@ _fmm_resetpage  LDX #42 ; mutated
 fmm_seed        TYA
                 CLC
                 ADC #>fmm_backptr ; we shift the high byte to point to the
-                STA ZP_ADDR+1  ; fmm_backptr array. Low byte not needed
                 STA ZP_BACKPTR_VEC+1
                 TXA
-                STA ZP_ADDR
                 STA ZP_BACKPTR_VEC
                 LDA #0             ; as we assume that fmm_backptr is aligned
                 LDY #0
@@ -390,12 +386,6 @@ fmm_continue    CLC
                 BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
                 AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
                 PHA   ; push it to stack
-                TYA              ; A = relative index to the cell
-                ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
-                STA ZP_ADDR   ; ZP_ADDR points to the back pointer
-                LDA #0
-                ADC ZP_BACKPTR_VEC+1
-                STA ZP_ADDR+1 ; Flow into _fmm_set_prior
 
 ;-------------------------------------------------------------------------------
 ; _fmm_set_prior(A,X,Y)
@@ -431,36 +421,18 @@ _fmm_set_prior  LDA (ZP_BACKPTR_VEC),y
                 BNE @found_elem
                 LDX fmm_list_next+255 ; find and element from the list of unused
                 CPX #255          ; elements
-                BEQ @reuse       ; if there's no unused elements, we jump
+                BEQ _fmm_return2 ; if there's no unused elements, we return
                 TXA
                 STA (ZP_BACKPTR_VEC),y
-                LDA ZP_ADDR ; ptrs[y] = ptr
-                STA fmm_addr_lo,x ; note that list_move left X unchanged
-                LDA ZP_ADDR+1
-                STA fmm_addr_hi,x
+                TYA ; A = relative index to the cell
+                ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
+                STA fmm_addr_lo,x   ; ZP_ADDR points to the back pointer
+                LDA #0
+                ADC ZP_BACKPTR_VEC+1
+                STA fmm_addr_hi,x ;
                 LDA fmm_list_next,x ; a: the current follower of x
                 STA fmm_list_next+255; empty list points now to current follower
                 JMP @list_insert
-@reuse          LDA fmm_curtime
-@loop           SBC #0 ; carry is guaranteed to be cleared here 
-                AND #NUM_LISTS-1
-                TAX
-                CMP fmm_list_next,x
-                BEQ @loop
-                LDA fmm_list_next,x
-                TAX ; x is now the index of the element to use
-                LDA fmm_addr_lo,x ; destroy the old back pointer of the element
-                STA @mutant3+1
-                LDA fmm_addr_hi,x
-                STA @mutant3+2
-                LDA #255
-@mutant3        STA $4242     
-                TXA 
-                STA (ZP_BACKPTR_VEC),y  ; set the back pointer (*ptr = x)
-                LDA ZP_ADDR ; set the forward  pointr (ptrs[x] = ptr)
-                STA fmm_addr_lo,x ; note that list_move left X unchanged
-                LDA ZP_ADDR+1
-                STA fmm_addr_hi,x
 @found_elem     STX ZP_TEMP
                 LDA fmm_list_next,x;following lines link the next[x] and prev[x]
                 LDY fmm_list_prev,x ; elements pointing to each other
