@@ -290,24 +290,6 @@ fmm_run         LDA fmm_curtime
                 JMP fmm_run
 @found          LDA fmm_list_next,x
                 TAX  ; X is the element which was dequeued
-                LDA fmm_addr_lo,x; NOTICE! carry is still cleared so that...
-                SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
-                STA ZP_BACKPTR_VEC
-                STA ZP_OUTPUT_VEC
-                STA ZP_INPUT_VEC
-                LDA fmm_addr_hi,x
-                SBC #0  ;
-                STA ZP_BACKPTR_VEC+1 ; ZP_BACKPTR_VEC -> &fmm_backptr[x-2,y-2]
-_fmm_pshiftout  ADC #42 ; mutated code so user choose output, carry is set
-                STA ZP_OUTPUT_VEC+1 ; ZP_TMP_B points now to arrival times
-                LDA ZP_BACKPTR_VEC+1
-                CLC
-_fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
-                STA ZP_INPUT_VEC+1
-                LDA #255
-                LDY #_FMM_X_2_Y_2
-                STA (ZP_BACKPTR_VEC),y
-                TXA ; deleting an element from list
                 PHA
                 LDA fmm_list_next,x;following lines link the next[x] and prev[x]
                 LDY fmm_list_prev,x ; a: after, x: element, y: before
@@ -321,8 +303,24 @@ _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
                 TAY             ; A: elem, X: old, Y: elem
                 TXA             ; A: old, X: old, Y: elem
                 STA fmm_list_next,y ; next[elem] = old
-                LDA fmm_curtime
+                LDA fmm_addr_lo,y; NOTICE! carry is still cleared so that...
+                SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
+                STA ZP_BACKPTR_VEC
+                STA ZP_OUTPUT_VEC
+                STA ZP_INPUT_VEC
+                LDA fmm_addr_hi,y
+                SBC #0  ;
+                STA ZP_BACKPTR_VEC+1 ; ZP_BACKPTR_VEC -> &fmm_backptr[x-2,y-2]
+_fmm_pshiftout  ADC #42 ; mutated code so user choose output, carry is set
+                STA ZP_OUTPUT_VEC+1 ; ZP_TMP_B points now to arrival times
+                LDA ZP_BACKPTR_VEC+1
+                CLC
+_fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
+                STA ZP_INPUT_VEC+1
                 LDY #_FMM_X_2_Y_2
+                LDA #255
+                STA (ZP_BACKPTR_VEC),y
+                LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
                 _fmm_consider _FMM_X_1_Y_2 ; aka "accept" the cell
                 _fmm_consider _FMM_X_3_Y_2
