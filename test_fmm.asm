@@ -15,8 +15,7 @@ incasm "fast_marching.asm"
 
 
 * = $1000       
-                fmm_setinput map
-                fmm_setoutput screen_mem
+                fmm_setio map,screen_mem
                 fmm_setcallback callback
                 JSR fmm_init
                 JSR fmm_reset
@@ -36,14 +35,11 @@ incasm "fast_marching.asm"
 ; callback get X, which is the relative distance between the two cells
 callback        LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #32
-                BNE @wall
-                CPX #15
-                BCC @do_lookup
-                LDA #15
+                BNE @wall                
+                LDA lookup,x
                 JMP fmm_continue
-@do_lookup      LDA lookup,x
-                JMP fmm_continue
-@wall           RTS  ; ... so we don't have to consider this cell at all
+@wall           CLC 
+                RTS  ; ... so we don't have to consider this cell at all
 
 Align
 time            dcb 1000,FAR_TIME

@@ -115,15 +115,13 @@
 
 ; Temporary zero page registers used internally by fmm_run. Can be safely used
 ; when fmm_run is not running. 
-ZP_BACKPTR_VEC = $FB ; word
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $02 ; word
-ZP_TEMP = $04 ; byte
+ZP_CUR_LIST = $04 ; byte
+ZP_CUR_TIME = $05
 
-watch ZP_BACKPTR_VEC
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
-watch ZP_TEMP
 
 ; All values in the output array will be <= FAR_TIME, except never considered
 ; cells that are 255. Limits how far the algorithm will expand the boundary,
@@ -135,6 +133,7 @@ FAR_TIME = 240
 ; Your callback function should always return a value < NUM_LISTS. Furthermore,
 ; NUM_LISTS should be a power of 2
 NUM_LISTS = 16
+NUM_LISTS_MINUS_1 = NUM_LISTS-1
 
 ; FMM_WIDTH and FMM_HEIGHT should be defined by the user
 _FMM_X_2_Y_3 = 2+3*FMM_WIDTH 
@@ -142,39 +141,34 @@ _FMM_X_3_Y_2 = 3+2*FMM_WIDTH
 _FMM_X_2_Y_2 = 2+2*FMM_WIDTH
 _FMM_X_1_Y_2 = 1+2*FMM_WIDTH
 _FMM_X_2_Y_1 = 2+1*FMM_WIDTH
+_FMM_X_1_Y_1 = 2+1*FMM_WIDTH
 _FMM_SIZE = FMM_WIDTH * FMM_HEIGHT
 _FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
 
-;-------------------------------------------------------------------------------
-; macro fmm_setinput address
-;       Sets the input (i.e. map) to be read from address. Uses only the MSB of
-;       the address, because assumes that address is page aligned.
-; Touches: A
-;-------------------------------------------------------------------------------
-defm            fmm_setinput
-                LDA #>/1 - fmm_backptr
-                STA _fmm_pshiftin+1
-                endm
+
+_fmm_head = 0
+_fmm_lo = NUM_LISTS
+_fmm_hi = _fmm_lo + 256
+_fmm_next = _fmm_hi + 256
 
 ;-------------------------------------------------------------------------------
-; macro fmm_setoutput address
-;       Sets the output (i.e. array of arrival times) to address. Uses only the
-;       MSB of the address, because assumes that address is page aligned.
+; macro fmm_setio input output
+;       Sets the shift between the input and the output. Uses only the MSB of
+;       the address, because assumes that addresses are aligned.
 ; Touches: A
 ;-------------------------------------------------------------------------------
-defm            fmm_setoutput   
-                LDA #>/1 + _FMM_SIZE_MINUS_1 
-                STA _fmm_resetpage+1
-                LDA #>/1 - fmm_backptr
-                STA _fmm_pshiftout+1
-                DEC _fmm_pshiftout+1 ; eventually, carry will be set so dec 1
+defm            fmm_setio
+                LDA #>/1 - /2
+                STA _fmm_shift+1
+                LDA #>/2
+                STA _fmm_outputpage
                 endm
 
 ;-------------------------------------------------------------------------------
 ; macro fmm_setcallback address
-;       Sets the callback function to address. Call back function reads the
-;       input map and 'returns' (more about that in the tips above) the
-;       slowness of the cell
+;       Sets the callback function for considering straight cells. Callback
+;       function reads the input map and 'returns' (more about that in the tips
+;       above) the slowness of the cell
 ; Touches: A
 ;-------------------------------------------------------------------------------
 defm            fmm_setcallback
@@ -187,35 +181,23 @@ defm            fmm_setcallback
 ;------------------------------
 ; fmm_init()
 ; 
-; Initializes the doubly-linked empty lists + one single linked circular list
-; with all unused elements.
+; Initializes the linked lists.
 ; 
-; What this function really does:
-; For example, if NUM_LISTS = 2, the pointers are initialized like this
-; fmm_list_next[0] = 0, fmm_list_prev[0] = 0 <- this is an empty list
-; fmm_list_next[1] = 1, fmm_list_prev[1] = 1 <- this is an empty list
-; fmm_list_next[2] = 3 <- rest of the elements are a circular
-; fmm_list_next[3] = 4    single-linked list of unused elements
-; ... 
-; fmm_list_next[255] = 2
+; TBW
 ;
 ; Parameters: none
-; Touches: A, X, Y
+; Touches: A, X
 ;------------------------------       
-fmm_init        LDX #NUM_LISTS
-@loop1          TXA              ; this loop creates the empty lists
-                STA fmm_list_next,x
-                STA fmm_list_prev,x
+fmm_init        LDX #NUM_LISTS-1
+                LDA #0
+@loop_heads     STA fmm_head,x
                 DEX
-                BPL @loop1               
-                LDY #0
-@loop3          TYA              ; this loop set the fmm_list_next values of the
-                DEY              ; circular list
-                STA fmm_list_next,y
-                CPY #NUM_LISTS  ; when looping backwards, we should end before
-                BNE @loop3       ; we overwrite the empty lists
-                LDA #NUM_LISTS 
-                STA fmm_list_next,x ; x was 255
+                BPL @loop_heads
+                LDX #0
+@loop_nexts     TXA
+                DEX
+                STA fmm_head,x
+                BNE @loop_nexts
                 RTS 
 
 ;-------------------------------------------------------------------------------
@@ -228,7 +210,8 @@ fmm_init        LDX #NUM_LISTS
 ;-------------------------------------------------------------------------------
 fmm_reset       LDY #0 ; low address byte = 0, because we assume page align
                 STY ZP_OUTPUT_VEC
-_fmm_resetpage  LDX #42 ; mutated
+_fmm_outputpage=*+1  
+                LDX #42 ; mutated
                 STX ZP_OUTPUT_VEC+1        
                 LDA #255   
                 LDX #>_FMM_SIZE_MINUS_1
@@ -242,7 +225,7 @@ _fmm_resetpage  LDX #42 ; mutated
                 DEX
                 BPL @loop
                 LDA #0
-                STA fmm_curtime
+                STA ZP_CUR_TIME
                 RTS    
 
 ;-------------------------------------------------------------------------------
@@ -255,20 +238,20 @@ _fmm_resetpage  LDX #42 ; mutated
 ;-------------------------------------------------------------------------------
 fmm_seed        TYA
                 CLC
-                ADC #>fmm_backptr ; we shift the high byte to point to the
-                STA ZP_BACKPTR_VEC+1
+                ADC _fmm_outputpage ; we shift the high byte to point to the
+                STA ZP_OUTPUT_VEC+1
                 TXA
-                STA ZP_BACKPTR_VEC
+                STA ZP_OUTPUT_VEC
                 LDA #0             ; as we assume that fmm_backptr is aligned
                 LDY #0
                 PHA
-                JMP _fmm_set_prior ; tail call to set the priority of the cell    
+                ;JMP _fmm_set_prior ; tail call to set the priority of the cell    
 
 ;-------------------------------------------------------------------------------
 ; Internally used, reset the fmm_curtime = 0, should be near the branch
 ;-------------------------------------------------------------------------------
 _fmm_cleanup    LDA #0
-                STA fmm_curtime
+                STA ZP_CUR_TIME
                 RTS
 
 ;-------------------------------------------------------------------------------
@@ -279,54 +262,56 @@ _fmm_cleanup    LDA #0
 ; Paramters: none
 ; Touches: A, X, Y 
 ;-------------------------------------------------------------------------------
-fmm_run         LDA fmm_curtime
-                CMP #FAR_TIME+1
-                BCS _fmm_cleanup    ; beyond MAX priority, we're done
-                AND #NUM_LISTS-1 ; 
-                TAX
-                CMP fmm_list_next,x
-                BNE @found
-                INC fmm_curtime
-                JMP fmm_run
-@found          LDA fmm_list_next,x
-                TAX  ; X is the element which was dequeued
-                PHA
-                LDA fmm_list_next,x;following lines link the next[x] and prev[x]
-                LDY fmm_list_prev,x ; a: after, x: element, y: before
-                STA fmm_list_next,y ; next[before] = after
-                TAX ; a: after, x: after, y: before
-                TYA ; a: before, x: after, y: before
-                STA fmm_list_prev,x ; prev[after] = before
-                PLA
-                LDX fmm_list_next+255 ; A: elem, X: old, Y: before
-                STA fmm_list_next+255 ; next[255] = elem
-                TAY             ; A: elem, X: old, Y: elem
-                TXA             ; A: old, X: old, Y: elem
-                STA fmm_list_next,y ; next[elem] = old
-                LDA fmm_addr_lo,y; NOTICE! carry is still cleared so that...
-                SBC #_FMM_X_1_Y_2 ; ... this shifts two rows and two cols
-                STA ZP_BACKPTR_VEC
+fmm_run         LDX ZP_CUR_LIST
+                LDY fmm_head,x
+                BEQ _fmm_advance ; if the head is a null pointer, skip
+                LDA fmm_next,y
+                STA fmm_head,x ; set head to point to the next element
+                LDA fmm_lo,y
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
-                LDA fmm_addr_hi,y
-                SBC #0  ;
-                STA ZP_BACKPTR_VEC+1 ; ZP_BACKPTR_VEC -> &fmm_backptr[x-2,y-2]
-_fmm_pshiftout  ADC #42 ; mutated code so user choose output, carry is set
-                STA ZP_OUTPUT_VEC+1 ; ZP_TMP_B points now to arrival times
-                LDA ZP_BACKPTR_VEC+1
-                CLC
-_fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
-                STA ZP_INPUT_VEC+1
+                LDA fmm_hi,y
+                STA ZP_OUTPUT_VEC+1 ; no need to check if it's already accepted
                 LDY #_FMM_X_2_Y_2
-                LDA #255
-                STA (ZP_BACKPTR_VEC),y
-                LDA fmm_curtime
+                LDA #249
+                CMP (ZP_OUTPUT_VEC),y
+                BCC fmm_run ; already accepted
+                LDA ZP_OUTPUT_VEC+1
+_fmm_shift      ADC #42 ; mutated code so user choose output, carry is set
+                STA ZP_INPUT_VEC+1 ; ZP_TMP_B points now to arrival times
+                LDA ZP_CUR_TIME
                 STA (ZP_OUTPUT_VEC),y ; store the priority into the arrival time
-                _fmm_consider _FMM_X_1_Y_2 ; aka "accept" the cell
-                _fmm_consider _FMM_X_3_Y_2
-                _fmm_consider _FMM_X_2_Y_1
-                _fmm_consider _FMM_X_2_Y_3
+                JSR _fmm_cons_left
+                JSR _fmm_cons_right
+                JSR _fmm_cons_up
+                JSR _fmm_cons_down
                 JMP fmm_run
+_fmm_advance    LDA ZP_CUR_TIME
+                CLC
+                ADC #1
+                CMP FAR_TIME
+                BCC _fmm_return
+                AND #NUM_LISTS-1
+                STA ZP_CUR_LIST
+                JMP fmm_run
+_fmm_return     RTS
+
+;-------------------------------------------------------------------------------
+; TBW
+;-------------------------------------------------------------------------------
+fmm_continue    CLC
+                ADC ZP_CUR_TIME ; add relative time to larger arrival time
+                CMP #FAR_TIME+1
+                BCS @end; the new time is > FAR_TIME so stop now
+                LDX fmm_next
+                BEQ @end ; out of empty cells
+                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
+                TAY
+                LDA fmm_head,y ; a: the current follower of x
+                STA fmm_next,x; empty list points now to current follower
+                TXA
+                STA fmm_head,y         
+@end            RTS
 
 ;-------------------------------------------------------------------------------
 ; macro _fmm_consider /1
@@ -342,130 +327,79 @@ _fmm_pshiftin   ADC #42 ; mutated code so user can choose where to get input
 ;       /1: index of the cell to be considered, relative to ZP_* vectors
 ; Touches: A, X, Y, ZP_TEMP
 ;-------------------------------------------------------------------------------
-defm            _fmm_consider
+defm            _fmm_consider_horz
                 LDY #/1 ; center cell
                 LDA (ZP_OUTPUT_VEC),y
-                CMP #FAR_TIME+1
-                BCC @skip_this_cell ; this cell has already been accepted
-                LDY #/1-1  ; cell on the left
-                LDA (ZP_OUTPUT_VEC),y
-                LDY #/1+1 ; cell on the right
-                CMP (ZP_OUTPUT_VEC),y
-                BCC @left_le_right
-                LDA (ZP_OUTPUT_VEC),y; ATIME_1 is smaller of the horizontal times
-@left_le_right  STA ZP_TEMP
-                LDY #/1-FMM_WIDTH ; cell below
-                LDA (ZP_OUTPUT_VEC),y
-                LDY #/1+FMM_WIDTH ; cell above
-                CMP (ZP_OUTPUT_VEC),y
-                BCC @bottom_le_top
-                LDA (ZP_OUTPUT_VEC),y ; A is smaller of the vertical times
-@bottom_le_top  LDY #/1 ; center cell
-                JSR _fmm_tail
-@skip_this_cell
+                CMP #253 ; 251 = left, 252 = right, 253 = down, 254 = up
+                BCC @end ; this cell has already been accepted
+                CMP #255 ; never considered before
+                BNE @diag
+                LDA #/2
+                STA (ZP_OUTPUT_VEC),y
+                LDX #NUM_LISTS-1
+                JMP _fmm_callback
+@diag           CMP #254
+                BEQ @up
+@down           LDY #/1+FMM_WIDTH
+                byte $2C ; BIT absolute, skips the next 2 bytes
+@up             LDY #/1-FMM_WIDTH
+@cont           LDA ZP_CUR_TIME
+                SEC
+                SBC (ZP_OUTPUT_VEC),y
+                TAX
+                LDY #/1
+                LDA #250
+                STA (ZP_OUTPUT_VEC),y
+                JMP _fmm_callback
+@end            RTS
                 endm
 
-_fmm_tail       TAX ; the smaller of vertical vertical times is stored in X
+defm            _fmm_consider_vert
+                LDY #/1 ; center cell
+                LDA (ZP_OUTPUT_VEC),y
+                CMP #251 ; 251 = left, 252 = right, 253 = down, 254 = up
+                BCC @end ; this cell has already been accepted
+                CMP #253 ; never considered before
+                BCC @diag
+                CMP #255 ; never considered before
+                BCC @end
+                LDA #/2
+                STA (ZP_OUTPUT_VEC),y
+                LDX #NUM_LISTS-1
+                JMP _fmm_callback     
+@diag           CMP #252
+                BEQ @right
+@left           LDY #/1+1
+                byte $2C ; BIT absolute, skips the next 2 bytes
+@right          LDY #/1-1
+@cont           LDA ZP_CUR_TIME
                 SEC
-                SBC ZP_TEMP
-                BCS @ispositive
-                EOR #$FF ; A = 255-A
-                ADC #1 ; carry is guaranteeed to be clear so add 1
-                STX ZP_TEMP ; ZP_TEMP is now the smaller of the two times
-@ispositive     TAX  ; X is now the relative arrive time of the two cells
+                SBC (ZP_OUTPUT_VEC),y
+                TAX
+                LDY #/1
+                LDA #250
+                STA (ZP_OUTPUT_VEC),y
+                JMP _fmm_callback
+@end            RTS
+                endm
+
+_fmm_cons_left  _fmm_consider_horz _FMM_X_1_Y_2,251
+_fmm_cons_right _fmm_consider_horz _FMM_X_3_Y_2,252
+_fmm_cons_up    _fmm_consider_vert _FMM_X_2_Y_3,254
+_fmm_cons_down  _fmm_consider_vert _FMM_X_2_Y_1,253
+
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
-
-_fmm_return2    RTS ; should be near the branch
-
-fmm_continue    CLC
-                ADC ZP_TEMP ; add relative time to smaller arrival time
-                CMP #FAR_TIME+1
-                BCS _fmm_return2 ; the new time is > FAR_TIME so stop now
-                AND #NUM_LISTS-1 ; the list head is priority & (NUM_LISTS-1)
-                PHA   ; push it to stack
-
-;-------------------------------------------------------------------------------
-; _fmm_set_prior(A,X,Y)
-;       Sets the priority of the cell in the address ptr = $YX to A. The ptr 
-;       should point to the back pointer of the cell. Back pointer is a byte
-;       containing the index of the cell in the circular list.
-;
-; pseudocode:
-; if *ptr != 255
-;    elem = *ptr // the element is already in the queue so only update its prio
-; else
-;    if the list of unused elements is not empty
-;       elem = the element with the highest priority (found using loop)
-;       *(ptrs[elem]) = 255 // we will replace the element with highest prio
-;    else
-;       elem = first unused element
-;    end
-;    *ptr = elem
-;    ptrs[elem] = ptr
-; end
-; move elem as the first element of list priority & (NUM_LISTS-1)
-; 
-; 
-; Parameters:
-;       STACK = priority of the cell & (NUM_LISTS-1)
-;       ZP_ADDR = low byte of the address containing the back pointer
-;       ZP_ADDR+1 = high byte of the address containing the back pointer
-; Touches: A, X, Y
-;-------------------------------------------------------------------------------
-_fmm_set_prior  LDA (ZP_BACKPTR_VEC),y                
-                CMP #255 ; A: index of the element in the list
-                BNE @list_remove
-                LDX fmm_list_next+255 ; find and element from the list of unused
-                CPX #255          ; elements
-                BEQ _fmm_return2 ; if there's no unused elements, we return
-                TXA
-                STA (ZP_BACKPTR_VEC),y
-                TYA ; A = relative index to the cell
-                ADC ZP_BACKPTR_VEC ; add A to the low address, carry not set
-                STA fmm_addr_lo,x   ; ZP_ADDR points to the back pointer
-                LDA #0
-                ADC ZP_BACKPTR_VEC+1
-                STA fmm_addr_hi,x ;
-                LDA fmm_list_next,x ; a: the current follower of x
-                STA fmm_list_next+255; empty list points now to current follower
-@list_add       PLA ; A: head, X: new
-                STA fmm_list_prev,x ; prev[new] = head              
-                TAY ; A: head, X: new, Y: head
-                TXA ; A: new, X: new, Y: head
-                LDX fmm_list_next,y ; A: new, X: old, Y: head
-                STA fmm_list_next,y ; next[head] = new
-                STA fmm_list_prev,x ; prev[old] = new
-                TAY  ; A: new, X: old, Y: new
-                TXA  ; A: old, X: old, Y: new
-                STA fmm_list_next,y ; next[new] = old
-                RTS
-@list_remove    STA ZP_TEMP
-                TAX
-                LDA fmm_list_next,x;following lines link the next[x] and prev[x]
-                LDY fmm_list_prev,x ; elements pointing to each other
-                STA fmm_list_next,y
-                TAX
-                TYA
-                STA fmm_list_prev,x ; the old list is now linked
-                LDX ZP_TEMP
-                JMP @list_add
 
 ;-------------------------------------------------------------------------------
 ; DATA
 ;-------------------------------------------------------------------------------
-fmm_curtime     byte 0          ; priority of the lowest element in the list
-fmm_addr_hi     dcb 256,0       ; list of pointers to the backptr
-fmm_addr_lo     dcb 256,0
-fmm_list_next   dcb 256,0
-fmm_list_prev   dcb 256,0
+fmm_head   dcb NUM_LISTS,0
+fmm_lo     dcb 256,0
+fmm_hi     dcb 256,0       ; list of pointers to the output
+fmm_next   dcb 256,0
 
-Align
-fmm_backptr     dcb _FMM_SIZE,255
-
-watch fmm_backptr
-watch fmm_curtime
-watch fmm_addr_hi
-watch fmm_addr_lo
-watch fmm_list_next
-watch fmm_list_prev
+watch fmm_head
+watch fmm_lo
+watch fmm_hi
+watch fmm_next
 
