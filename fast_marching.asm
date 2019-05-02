@@ -320,6 +320,7 @@ defm            _fmm_consider
                 ADC (ZP_OUTPUT_VEC),y
                 TAX
                 LDA #SOON_ACCEPTED
+                LDY #/15
                 STA (ZP_OUTPUT_VEC),y
 @call           LDA #</2
                 STA _fmm_add_lo_mut+1
