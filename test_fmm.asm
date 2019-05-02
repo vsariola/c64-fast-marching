@@ -15,10 +15,8 @@ incasm "fast_marching.asm"
 
 
 * = $1000       
-                fmm_setinput map
-                fmm_setoutput screen_mem
+                fmm_setmaps map,screen_mem
                 fmm_setcallback callback
-                JSR fmm_init
                 JSR fmm_reset
                 LDX #<START_LOC
                 LDY #>START_LOC
@@ -26,7 +24,6 @@ incasm "fast_marching.asm"
                 LDX #<START_LOC2
                 LDY #>START_LOC2
                 JSR fmm_seed
-                
                 JSR fmm_run
 @loop           JMP @loop
                 
@@ -37,16 +34,12 @@ incasm "fast_marching.asm"
 callback        LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #32
                 BNE @wall
-                CPX #15
-                BCC @do_lookup
-                LDA #15
-                JMP fmm_continue
 @do_lookup      LDA lookup,x
-                JMP fmm_continue
+                JMP _fmm_list_add
 @wall           RTS  ; ... so we don't have to consider this cell at all
 
 Align
-time            dcb 1000,FAR_TIME
+time            dcb 1000,NEVER_CONSIDERED
 
 Align
 map     BYTE    $23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23
