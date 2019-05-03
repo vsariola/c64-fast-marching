@@ -133,15 +133,16 @@ SOON_ACCEPTED = 250
 NUM_LISTS = 16
 
 ; FMM_WIDTH and FMM_HEIGHT should be defined by the user
-_FMM_X_0_Y_2 = 0+2*FMM_WIDTH
+
 _FMM_X_0_Y_0 = 0+0*FMM_WIDTH
-_FMM_X_2_Y_2 = 2+2*FMM_WIDTH
-_FMM_X_2_Y_0 = 2+0*FMM_WIDTH
-_FMM_X_1_Y_2 = 1+2*FMM_WIDTH
-_FMM_X_1_Y_0 = 1+0*FMM_WIDTH
-_FMM_X_2_Y_1 = 2+1*FMM_WIDTH
 _FMM_X_0_Y_1 = 0+1*FMM_WIDTH
+_FMM_X_0_Y_2 = 0+2*FMM_WIDTH
+_FMM_X_1_Y_0 = 1+0*FMM_WIDTH
 _FMM_X_1_Y_1 = 1+1*FMM_WIDTH
+_FMM_X_1_Y_2 = 1+2*FMM_WIDTH
+_FMM_X_2_Y_0 = 2+0*FMM_WIDTH
+_FMM_X_2_Y_1 = 2+1*FMM_WIDTH
+_FMM_X_2_Y_2 = 2+2*FMM_WIDTH
 
 _FMM_SIZE = FMM_WIDTH * FMM_HEIGHT
 _FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
@@ -242,6 +243,7 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 ;; Paramters: none
 ;; Touches: A, X, Y 
 ;;-------------------------------------------------------------------------------
+
 _fmm_run_cont2  INC fmm_curtime
                 JMP _fmm_run_loop
 _fmm_return     RTS
@@ -253,8 +255,8 @@ _fmm_run_loop   LDA fmm_curtime
                 AND #NUM_LISTS-1 
                 TAX
                 LDA fmm_list_head,x
-inner_loop      BEQ _fmm_run_cont2
-                TAX ; X = current_element
+                BEQ _fmm_run_cont2
+inner_loop      TAX ; X = current_element
                 LDA fmm_addr_lo,x
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
@@ -267,8 +269,7 @@ _fmm_pshiftin   ADC #42
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #SOON_ACCEPTED
                 BCS @set
-                LDA fmm_list_next,x
-                JMP inner_loop
+                JMP _fmm_load_next
 @set            LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y
                 TXA
@@ -279,10 +280,12 @@ _fmm_pshiftin   ADC #42
                 _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0
                 PLA
                 TAX
-                LDA fmm_list_next,x
+_fmm_load_next  LDA fmm_list_next,x
+                BEQ _fmm_list_destr
                 JMP inner_loop
-_fmm_list_destr LDA fmm_list_head,x
-                BEQ _fmm_run_cont
+_fmm_list_destr LDA fmm_curtime
+                AND #NUM_LISTS-1 
+                TAX
                 LDY fmm_list_tail,x
                 LDA fmm_list_next
                 STA fmm_list_next,y
@@ -320,7 +323,7 @@ defm            _fmm_consider
                 ADC (ZP_OUTPUT_VEC),y
                 TAX
                 LDA #SOON_ACCEPTED
-                LDY #/15
+                LDY #/1
                 STA (ZP_OUTPUT_VEC),y
 @call           LDA #</2
                 STA _fmm_add_lo_mut+1
@@ -333,6 +336,7 @@ defm            _fmm_consider
 
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
+_fmm_return3    RTS   
 
 ;-------------------------------------------------------------------------------
 ; _fmm_list_add
@@ -340,7 +344,7 @@ _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 ; ZP_TEMP = addr, which is shifted by a mutated 16-bit shift
 ;-------------------------------------------------------------------------------
 _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
-                BEQ _fmm_return2      ; if list_next[0] == 0: return
+                BEQ _fmm_return3      ; if list_next[0] == 0: return
                 CLC 
                 ADC fmm_curtime
                 AND #NUM_LISTS-1
