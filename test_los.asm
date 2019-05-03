@@ -32,17 +32,15 @@ incasm "fast_marching.asm"
                 LDA #0
                 STA $D020 ; border black
                 LDA #0
-                STA $D021 ; background black
-                JSR fmm_init
-@loop           fmm_setinput map
-                fmm_setoutput time1
-                fmm_setcallback callback1
+                STA $D021 ; background black                
+@loop           fmm_setmaps map,time1
                 JSR fmm_reset
+                fmm_setcallback callback1
                 LDX coord_lo
                 LDY coord_hi
                 JSR fmm_seed
                 JSR fmm_run
-                fmm_setoutput time2
+                fmm_setmaps map,time2
                 fmm_setcallback callback2
                 JSR fmm_reset
                 LDX coord_lo
@@ -53,15 +51,15 @@ incasm "fast_marching.asm"
                 JSR read_joystick
                 JMP @loop
                 
-read_joystick   LDX #_FMM_X_2_Y_2
+read_joystick   LDX #_FMM_X_1_Y_1
                 LDA #%0001
                 BIT $DC01
                 BNE @not_up
-                LDX #_FMM_X_2_Y_1
+                LDX #_FMM_X_1_Y_0
 @not_up         LDA #%0010
                 BIT $DC01
                 BNE @not_down
-                LDX #_FMM_X_2_Y_3
+                LDX #_FMM_X_1_Y_2
 @not_down       LDA #%0100
                 BIT $DC01
                 BNE @not_left
@@ -79,7 +77,7 @@ read_joystick   LDX #_FMM_X_2_Y_2
                 STA coord_hi
                 SEC
                 LDA coord_lo
-                SBC #_FMM_X_2_Y_2
+                SBC #_FMM_X_1_Y_1
                 STA coord_lo
                 LDA coord_hi
                 SBC #0
@@ -146,32 +144,24 @@ callback1       LDA (ZP_INPUT_VEC),y ; this loads the
                 CMP #$66
                 BEQ @notwall
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall        CPX #11
-                BCS @maxedout
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout       LDA #15
+@notwall        LDA lookup,x
                 JMP fmm_continue
 
 callback2       LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #$A0
                 BNE @notwall2
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall2       CPX #11
-                BCS @maxedout2
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout2      LDA #15
+@notwall2       LDA lookup,x
                 JMP fmm_continue
 
 coord_lo        byte <START_LOC
 coord_hi        byte >START_LOC
 
 Align
-time1           dcb 1000,FAR_TIME
+time1           dcb 1000,NEVER_CONSIDERED
 
 Align
-time2           dcb 1000,FAR_TIME
+time2           dcb 1000,NEVER_CONSIDERED
 
 
 Align
@@ -204,6 +194,6 @@ map     BYTE    $A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,
 
 
 
-lookup          byte 11,11,12,12,12,13,13,14,14,14,14
+lookup          byte 11,10,10,9,8,8,7,7,6,5,4,4,3,2,1,0,15
 
 color_gradient  byte 1,1,13,13,13,12,12,12,12,8,8,8,8,8,9
