@@ -304,18 +304,18 @@ defm            _fmm_consider
                 JMP @call
 @test_1         CMP #/4
                 BNE @test_2
+                LDA fmm_curtime
                 LDY #/5
-                LDA (ZP_OUTPUT_VEC),y
+                SEC
+                SBC (ZP_OUTPUT_VEC),y
                 JMP @subs
 @test_2         CMP #/6
                 BNE @skip
+                LDA fmm_curtime
                 LDY #/7
-                LDA (ZP_OUTPUT_VEC),y
-@subs           EOR #255
                 SEC
-                LDY #_FMM_X_1_Y_1
-                ADC (ZP_OUTPUT_VEC),y
-                TAX
+                SBC (ZP_OUTPUT_VEC),y
+@subs           TAX
                 LDA #SOON_ACCEPTED
                 LDY #/1
                 STA (ZP_OUTPUT_VEC),y
