@@ -343,6 +343,7 @@ _fmm_return3    RTS
 ; A = priority
 ; ZP_TEMP = addr, which is shifted by a mutated 16-bit shift
 ;-------------------------------------------------------------------------------
+fmm_continue
 _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 BEQ _fmm_return3      ; if list_next[0] == 0: return
                 CLC 

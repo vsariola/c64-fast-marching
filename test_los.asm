@@ -33,16 +33,14 @@ incasm "fast_marching.asm"
                 STA $D020 ; border black
                 LDA #0
                 STA $D021 ; background black
-                JSR fmm_init
-@loop           fmm_setinput map
-                fmm_setoutput time1
-                fmm_setcallback callback1
                 JSR fmm_reset
+@loop           fmm_setmaps map,time1
+                fmm_setcallback callback1
                 LDX coord_lo
                 LDY coord_hi
                 JSR fmm_seed
                 JSR fmm_run
-                fmm_setoutput time2
+                fmm_setmaps map,time1
                 fmm_setcallback callback2
                 JSR fmm_reset
                 LDX coord_lo
@@ -53,15 +51,15 @@ incasm "fast_marching.asm"
                 JSR read_joystick
                 JMP @loop
                 
-read_joystick   LDX #_FMM_X_2_Y_2
+read_joystick   LDX #_FMM_X_1_Y_1
                 LDA #%0001
                 BIT $DC01
                 BNE @not_up
-                LDX #_FMM_X_2_Y_1
+                LDX #_FMM_X_1_Y_0
 @not_up         LDA #%0010
                 BIT $DC01
                 BNE @not_down
-                LDX #_FMM_X_2_Y_3
+                LDX #_FMM_X_1_Y_2
 @not_down       LDA #%0100
                 BIT $DC01
                 BNE @not_left
@@ -79,7 +77,7 @@ read_joystick   LDX #_FMM_X_2_Y_2
                 STA coord_hi
                 SEC
                 LDA coord_lo
-                SBC #_FMM_X_2_Y_2
+                SBC #_FMM_X_1_Y_1
                 STA coord_lo
                 LDA coord_hi
                 SBC #0
@@ -168,10 +166,10 @@ coord_lo        byte <START_LOC
 coord_hi        byte >START_LOC
 
 Align
-time1           dcb 1000,FAR_TIME
+time1           dcb 1000,NEVER_CONSIDERED
 
 Align
-time2           dcb 1000,FAR_TIME
+time2           dcb 1000,NEVER_CONSIDERED
 
 
 Align

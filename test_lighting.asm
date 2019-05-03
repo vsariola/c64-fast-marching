@@ -30,11 +30,9 @@ incasm "fast_marching.asm"
 
 
 * = $1000       
-                JSR fmm_init
-                fmm_setinput map
-                fmm_setoutput time1
-                fmm_setcallback callback1
                 JSR fmm_reset
+                fmm_setmaps map,time1
+                fmm_setcallback callback1
                 LDX #<START_LOC
                 LDY #>START_LOC
                 JSR fmm_seed
@@ -42,7 +40,7 @@ incasm "fast_marching.asm"
                 LDY #>START_LOC2
                 JSR fmm_seed
                 JSR fmm_run
-                fmm_setoutput time2
+                fmm_setmaps map,time2
                 fmm_setcallback callback2
                 JSR fmm_reset
                 LDX #<START_LOC
@@ -142,10 +140,10 @@ callback2       LDA (ZP_INPUT_VEC),y ; this loads the
                 JMP fmm_continue
 
 Align
-time1           dcb 1000,FAR_TIME
+time1           dcb 1000,NEVER_CONSIDERED
 
 Align
-time2           dcb 1000,FAR_TIME
+time2           dcb 1000,NEVER_CONSIDERED
 
 
 Align
