@@ -7,11 +7,12 @@ START_LOC2 = 22+32*15 ; $01F6
 SCREEN_MEM = $0400
 COLOR_MEM = $D800
 
-ZP_1      = $F5
-ZP_2      = $F3
-ZP_SCREEN = $F1
-ZP_COLOR  = $EE
-ZP_MAP    = $EC
+ZP_1      = $05
+ZP_2      = $07
+ZP_SCREEN = $09
+ZP_COLOR  = $11
+ZP_MAP    = $13
+
 
 watch time1
 watch time2
@@ -30,14 +31,11 @@ incasm "fast_marching.asm"
 
 
 * = $1000       
-                JSR fmm_reset
                 fmm_setmaps map,time1
+                JSR fmm_reset
                 fmm_setcallback callback1
                 LDX #<START_LOC
                 LDY #>START_LOC
-                JSR fmm_seed
-                LDX #<START_LOC2
-                LDY #>START_LOC2
                 JSR fmm_seed
                 JSR fmm_run
                 fmm_setmaps map,time2
@@ -45,9 +43,6 @@ incasm "fast_marching.asm"
                 JSR fmm_reset
                 LDX #<START_LOC
                 LDY #>START_LOC
-                JSR fmm_seed
-                LDX #<START_LOC2
-                LDY #>START_LOC2
                 JSR fmm_seed
                 JSR fmm_run
                 JSR draw
@@ -121,22 +116,14 @@ callback1       LDA (ZP_INPUT_VEC),y ; this loads the
                 CMP #$66
                 BEQ @notwall
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall        CPX #11
-                BCS @maxedout
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout       LDA #15
+@notwall        LDA lookup,x
                 JMP fmm_continue
 
 callback2       LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #$A0
                 BNE @notwall2
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall2       CPX #11
-                BCS @maxedout2
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout2      LDA #15
+@notwall2       LDA lookup,x
                 JMP fmm_continue
 
 Align
@@ -176,6 +163,6 @@ map     BYTE    $A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,
 
 
 
-lookup          byte 11,11,12,12,12,13,13,14,14,14,14
+lookup          byte 11,11,12,12,12,13,13,14,14,14,14,15,15,15,15,15
 
 color_gradient  byte 1,1,13,13,13,12,12,12,12,8,8,8,8,8,9

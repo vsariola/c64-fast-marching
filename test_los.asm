@@ -32,15 +32,15 @@ incasm "fast_marching.asm"
                 LDA #0
                 STA $D020 ; border black
                 LDA #0
-                STA $D021 ; background black
-                JSR fmm_reset
+                STA $D021 ; background black                
 @loop           fmm_setmaps map,time1
+                JSR fmm_reset
                 fmm_setcallback callback1
                 LDX coord_lo
                 LDY coord_hi
                 JSR fmm_seed
                 JSR fmm_run
-                fmm_setmaps map,time1
+                fmm_setmaps map,time2
                 fmm_setcallback callback2
                 JSR fmm_reset
                 LDX coord_lo
@@ -144,22 +144,14 @@ callback1       LDA (ZP_INPUT_VEC),y ; this loads the
                 CMP #$66
                 BEQ @notwall
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall        CPX #11
-                BCS @maxedout
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout       LDA #15
+@notwall        LDA lookup,x
                 JMP fmm_continue
 
 callback2       LDA (ZP_INPUT_VEC),y ; this loads the 
                 CMP #$A0
                 BNE @notwall2
                 RTS  ; ... so we don't have to consider this cell at all
-@notwall2       CPX #11
-                BCS @maxedout2
-                LDA lookup,x
-                JMP fmm_continue
-@maxedout2      LDA #15
+@notwall2       LDA lookup,x
                 JMP fmm_continue
 
 coord_lo        byte <START_LOC
@@ -202,6 +194,6 @@ map     BYTE    $A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,$A0,
 
 
 
-lookup          byte 11,11,12,12,12,13,13,14,14,14,14
+lookup          byte 11,11,12,12,12,13,13,14,14,14,14,15,15,15,15,15
 
 color_gradient  byte 1,1,13,13,13,12,12,12,12,8,8,8,8,8,9

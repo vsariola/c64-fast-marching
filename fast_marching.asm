@@ -212,6 +212,8 @@ _fmm_resetpage  LDX #42 ; mutated
                 DEC ZP_OUTPUT_VEC+1
                 DEX
                 BPL @loop
+                LDA #0
+                STA fmm_curtime
                 RTS    
 
 ;-------------------------------------------------------------------------------
@@ -247,8 +249,7 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 _fmm_run_cont2  INC fmm_curtime
                 JMP _fmm_run_loop
 _fmm_return     RTS
-fmm_run         LDA #0
-                STA fmm_curtime
+fmm_run         
 _fmm_run_loop   LDA fmm_curtime
                 CMP #SOON_ACCEPTED
                 BCS _fmm_return
