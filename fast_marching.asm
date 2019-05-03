@@ -266,10 +266,10 @@ _fmm_pshiftin   ADC #42
                 STA (ZP_OUTPUT_VEC),y
                 TXA
                 PHA
-                _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2
-                _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0
-                _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0
-                _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0
+                _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,EAST
+                _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,EAST
+                _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,SOUTH
+                _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,SOUTH
                 PLA
                 TAX
 _fmm_load_next  LDA fmm_list_next,x
@@ -294,6 +294,8 @@ _fmm_run_cont   INC fmm_curtime
 defm            _fmm_consider
                 LDY #/1
                 LDA (ZP_OUTPUT_VEC),y
+                CMP #/8
+                BCC @skip
                 CMP #NEVER_CONSIDERED
                 BNE @test_1
                 LDA #/3
