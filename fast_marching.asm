@@ -237,9 +237,6 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 ;; Paramters: none
 ;; Touches: A, X, Y 
 ;;-------------------------------------------------------------------------------
-
-_fmm_run_cont2  INC fmm_curtime
-                JMP _fmm_run_loop
 _fmm_return     RTS
 fmm_run         
 _fmm_run_loop   LDA fmm_curtime
@@ -248,7 +245,9 @@ _fmm_run_loop   LDA fmm_curtime
                 AND #NUM_LISTS-1 
                 TAX
                 LDA fmm_list_head,x
-                BEQ _fmm_run_cont2
+                BNE inner_loop
+                INC fmm_curtime
+                JMP _fmm_run_loop
 inner_loop      TAX ; X = current_element
                 LDA fmm_addr_lo,x
                 STA ZP_OUTPUT_VEC
