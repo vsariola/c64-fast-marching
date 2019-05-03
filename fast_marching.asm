@@ -307,7 +307,7 @@ defm            _fmm_consider
                 BNE @test_1
                 LDA #/3
                 STA (ZP_OUTPUT_VEC),y
-                LDX #NUM_LISTS-1
+                LDX #NUM_LISTS
                 JMP @call
 @test_1         CMP #/4
                 BNE @test_2
