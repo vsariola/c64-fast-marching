@@ -107,6 +107,7 @@
 ; when fmm_run is not running. 
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $02 ; word
+fmm_curtime = $04 ; byte
 
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
@@ -367,7 +368,6 @@ _fmm_return2    RTS
 ;-------------------------------------------------------------------------------
 ; DATA
 ;-------------------------------------------------------------------------------
-fmm_curtime     byte 0          ; priority of the lowest element in the list
 fmm_addr_hi     dcb 256,0       ; list of pointers to the backptr
 fmm_addr_lo     dcb 256,0
 fmm_list_next   dcb 256,0
