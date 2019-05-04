@@ -242,9 +242,9 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 ;;-------------------------------------------------------------------------------
 _fmm_return     RTS
 fmm_run         LDX fmm_curtime
-                JMP _fmm_skipinc
+                byte $24 ; BIT .... skips the following command
 _fmm_advance    INX
-_fmm_skipinc    CPX #SOON_ACCEPTED
+                CPX #SOON_ACCEPTED
                 BCS _fmm_return
                 LDA fmm_list_head,x
                 BEQ _fmm_advance
