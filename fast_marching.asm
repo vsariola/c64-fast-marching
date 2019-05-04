@@ -241,13 +241,14 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 ;; Touches: A, X, Y 
 ;;-------------------------------------------------------------------------------
 _fmm_return     RTS
-_fmm_advance    INC fmm_curtime
-fmm_run         
-_fmm_run_loop   LDX fmm_curtime
-                CPX #SOON_ACCEPTED
+fmm_run         LDX fmm_curtime
+                JMP _fmm_skipinc
+_fmm_advance    INX
+_fmm_skipinc    CPX #SOON_ACCEPTED
                 BCS _fmm_return
                 LDA fmm_list_head,x
                 BEQ _fmm_advance
+                STX fmm_curtime
 inner_loop      LDY #_FMM_X_1_Y_1
 inner_l_skipldy TAX ; X = current_element
 inner_l_skiptax LDA fmm_addr_lo,x
@@ -339,7 +340,7 @@ _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 LDA fmm_list_next,x
                 STA fmm_list_next ; list_next[0] = list_next[elem]
                 LDA ZP_OUTPUT_VEC
-_fmm_add_lo_mut ADC #42
+_fmm_add_lo_mut ADC #42    ; carry will be clear if we are in valid range
                 STA fmm_addr_lo,x ; addr_lo[elem] = addr & 255
                 LDA ZP_OUTPUT_VEC+1
 _fmm_add_hi_mut ADC #42
