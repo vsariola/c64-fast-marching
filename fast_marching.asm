@@ -241,6 +241,7 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 ;; Touches: A, X, Y 
 ;;-------------------------------------------------------------------------------
 _fmm_return     RTS
+_fmm_advance    INC fmm_curtime
 fmm_run         
 _fmm_run_loop   LDA fmm_curtime
                 CMP #SOON_ACCEPTED
@@ -248,9 +249,7 @@ _fmm_run_loop   LDA fmm_curtime
                 AND #NUM_LISTS-1 
                 TAX
                 LDA fmm_list_head,x
-                BNE inner_loop
-                INC fmm_curtime
-                JMP _fmm_run_loop
+                BEQ _fmm_advance
 inner_loop      LDY #_FMM_X_1_Y_1
 inner_l_skipldy TAX ; X = current_element
 inner_l_skiptax LDA fmm_addr_lo,x
