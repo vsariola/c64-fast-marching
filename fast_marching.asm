@@ -305,15 +305,13 @@ defm            _fmm_consider
                 BNE @test_2
                 LDA fmm_curtime
                 LDY #/5
-                SEC
-                SBC (ZP_OUTPUT_VEC),y
+                SBC (ZP_OUTPUT_VEC),y ; carry is set already!
                 JMP @subs
 @test_2         CMP #/6
                 BNE @skip
                 LDA fmm_curtime
                 LDY #/7
-                SEC
-                SBC (ZP_OUTPUT_VEC),y
+                SBC (ZP_OUTPUT_VEC),y ; carry is set already!
 @subs           TAX
                 LDA #SOON_ACCEPTED
                 LDY #/1
