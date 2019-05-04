@@ -230,7 +230,7 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
                 LDA #>-_FMM_X_1_Y_1
                 STA _fmm_add_hi_mut+1
                 LDA #0
-                JMP _fmm_list_add ; tail call to set the priority of the cell    
+                JMP fmm_continue ; tail call to set the priority of the cell    
 
 ;;-------------------------------------------------------------------------------
 ;; fmm_run()
@@ -325,14 +325,13 @@ defm            _fmm_consider
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
 ;-------------------------------------------------------------------------------
-; _fmm_list_add
+; fmm_continue  Adds a new element to the priority queue
 ; A = priority
 ; ZP_OUTPUT_VEC = addr, to which a 16-bit signed addition is done before it is
 ;                 added to list
 ; $(_fmm_add_hi_mut,_fmm_add_hi_mut) = 16-bit integer added to ZP_OUTPUT_VEC
 ;-------------------------------------------------------------------------------
-fmm_continue
-_fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
+fmm_continue    LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 CLC 
                 ADC fmm_curtime
                 TAY
