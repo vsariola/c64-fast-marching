@@ -168,16 +168,13 @@ defm            fmm_setcallback
 ; Touches: A,X,Y,ZP_OUTPUT_VEC
 ;-------------------------------------------------------------------------------  
 fmm_reset       LDX #0 ;    for i in range(0,256):
-@loop1          TXA             ; this loop creates the empty lists
-                DEX
-                STA fmm_list_next,x ; list_next[i] = (i+1) & 255
-                BNE @loop1               
-                LDX #0 ;     for i in range(NUM_LISTS):
-                LDA #0 
-@loop2          DEX
+@loop           LDA #0 
                 STA fmm_list_head,x ;         list_head[i] = 0
                 STA fmm_list_tail,x ;         list_tail[i] = 0
-                BNE @loop2
+                TXA             ; this loop creates the empty lists
+                DEX
+                STA fmm_list_next,x ; list_next[i] = (i+1) & 255
+                BNE @loop              
                 ;     for i in range(len(output)):
                 ;         output[i] = NEVER_CONSIDERED
                 LDY #0 ; low address byte = 0, because we assume page align
