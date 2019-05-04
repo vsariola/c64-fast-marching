@@ -354,11 +354,12 @@ _fmm_add_hi_mut ADC #42
                 STA fmm_list_next,x ; list_next[elem] = 0
                 TXA
                 LDX fmm_list_tail,y ; old_tail:Y = list_tail[priority]
-                BNE @not_empty ; if old_tail == 0:
-                STA fmm_list_head,y ;  list_head[priority] = elem
-                JMP @continue
-@not_empty      STA fmm_list_next,x ; list_next[old_tail] = elem
-@continue       STA fmm_list_tail,y ; list_tail[priority] = elem
+                BEQ @empty ; if old_tail == 0:
+                STA fmm_list_next,x ; list_next[old_tail] = elem
+                STA fmm_list_tail,y ; list_tail[priority] = elem
+                RTS
+@empty          STA fmm_list_head,y ;  list_head[priority] = elem
+                STA fmm_list_tail,y          
 _fmm_cont_ret   RTS   
 
 ;-------------------------------------------------------------------------------
