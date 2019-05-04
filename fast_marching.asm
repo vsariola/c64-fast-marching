@@ -346,7 +346,6 @@ _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 TAY
                 LDA fmm_list_next,x
                 STA fmm_list_next ; list_next[0] = list_next[elem]
-                CLC
                 LDA ZP_OUTPUT_VEC
 _fmm_add_lo_mut ADC #42
                 STA fmm_addr_lo,x ; addr_lo[elem] = addr & 255
