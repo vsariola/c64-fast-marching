@@ -251,18 +251,18 @@ _fmm_run_loop   LDA fmm_curtime
                 BNE inner_loop
                 INC fmm_curtime
                 JMP _fmm_run_loop
-inner_loop      TAX ; X = current_element
+inner_loop      LDY #_FMM_X_1_Y_1
+inner_l_skipldy TAX ; X = current_element
 inner_l_skiptax LDA fmm_addr_lo,x
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
                 LDA fmm_addr_hi,x
                 STA ZP_OUTPUT_VEC+1
-                LDY #_FMM_X_1_Y_1
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #SOON_ACCEPTED
                 BCS @set
                 LDA fmm_list_next,x
-                BNE inner_loop
+                BNE inner_l_skipldy
                 JMP _fmm_list_destr
 @set            LDA ZP_OUTPUT_VEC+1
 _fmm_pshiftin   ADC #42  ; carry is set
@@ -277,6 +277,7 @@ _fmm_pshiftin   ADC #42  ; carry is set
                 _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,SOUTH
                 LDX ZP_TEMP
                 BEQ _fmm_list_destr
+                LDY #_FMM_X_1_Y_1
                 JMP inner_l_skiptax
 _fmm_list_destr LDA fmm_curtime
                 AND #NUM_LISTS-1 
