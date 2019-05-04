@@ -112,6 +112,7 @@ ZP_TEMP = $05 ; byte
 
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
+watch fmm_curtime
 
 NEVER_CONSIDERED = 255
 NORTH = 254
@@ -368,7 +369,6 @@ fmm_list_next   dcb 256,0
 fmm_list_head   dcb NUM_LISTS,0
 fmm_list_tail   dcb NUM_LISTS,0
 
-watch fmm_curtime
 watch fmm_addr_hi
 watch fmm_addr_lo
 watch fmm_list_next
