@@ -260,7 +260,9 @@ inner_loop      TAX ; X = current_element
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #SOON_ACCEPTED
                 BCS @set
-                JMP _fmm_load_next
+                LDA fmm_list_next,x
+                BNE inner_loop
+                JMP _fmm_list_destr
 @set            LDA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
                 LDA ZP_OUTPUT_VEC+1
