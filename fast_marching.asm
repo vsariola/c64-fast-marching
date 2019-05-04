@@ -84,24 +84,11 @@
 ; ;   0 ? ->  0 15 -> 0  15
 ; ; 26 is not very close to 15 * sqrt(2) = 21.213
 ; ;
-; ; This callback implements L1-norm, where one map cell is 1 units long
-; callback      LDA (ZP_INPUT_VEC),y  ; loads the map cell
-;               CMP #$66              ; in this map, $66 denotes empty space
-;               BEQ @notwall
-;               RTS                   ; was a wall, no need to consider at all
-; @notwall      LDA #1
-;               JMP fmm_continue
+; ; This lookup table implements L1-norm
+; lookup          byte 0,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,15
 ;
-; ; This callback implements Linfinity-norm; one map cell is 1 units long
-; callback      LDA (ZP_INPUT_VEC),y  ; loads the map cell
-;               CMP #$66              ; in this map, $66 denotes empty space
-;               BEQ @notwall
-;               RTS                   ; was a wall, no need to consider at all
-; @notwall      TXA
-;               BEQ @cont
-;               LDA #1
-; @cont         JMP fmm_continue
-
+; ; This lookup table implements Linfinity-norm
+; lookup          byte 0,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,15
 
 ; Temporary zero page registers used internally by fmm_run. Can be safely used
 ; when fmm_run is not running. 
@@ -121,8 +108,9 @@ WEST = 252
 EAST = 251
 SOON_ACCEPTED = 250
 
-; Your callback function should always return a value < MAX_SLOWNESS. Furthermore,
-; MAX_SLOWNESS should be a power of 2
+; Your callback function should always return a value < MAX_SLOWNESS.
+; Also, when X = MAX_SLOWNESS in the callback, the returned slowness should be
+; the slowness when moving straight.
 MAX_SLOWNESS = 16
 
 ; FMM_WIDTH and FMM_HEIGHT should be defined by the user
@@ -243,41 +231,41 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 _fmm_return     RTS
 fmm_run         LDX fmm_curtime
                 byte $24 ; BIT .... skips the following command
-_fmm_advance    INX
+_fmm_advance    INX ; X is now the current time
                 CPX #SOON_ACCEPTED
                 BCS _fmm_return
-                LDA fmm_list_head,x
-                BEQ _fmm_advance
-                STX fmm_curtime
+                LDA fmm_list_head,x ; A is now the first element in list X
+                BEQ _fmm_advance 
+                STX fmm_curtime ; store the current time to zero page
 inner_loop      LDY #_FMM_X_1_Y_1
 inner_l_skipldy TAX ; X = current_element
-inner_l_skiptax LDA fmm_addr_lo,x
-                STA ZP_OUTPUT_VEC
-                STA ZP_INPUT_VEC
+inner_l_skiptax LDA fmm_addr_lo,x ; load the address of the element and store to
+                STA ZP_OUTPUT_VEC ; ZP_OUTPUT_VEC
+                STA ZP_INPUT_VEC ; already store the input low address 
                 LDA fmm_addr_hi,x
                 STA ZP_OUTPUT_VEC+1
                 LDA (ZP_OUTPUT_VEC),y
-                CMP #SOON_ACCEPTED
-                BCS @set
-                LDA fmm_list_next,x
+                CMP #SOON_ACCEPTED ; if output < SOON_ACCEPTED, the cell has 
+                BCS @set ; already been accepted and skip
+                LDA fmm_list_next,x ; A is the following element
                 BNE inner_l_skipldy
                 JMP _fmm_list_destr
-@set            LDA ZP_OUTPUT_VEC+1
-_fmm_pshiftin   ADC #42  ; carry is set
-                STA ZP_INPUT_VEC+1
+@set            LDA ZP_OUTPUT_VEC+1 ;    the high address of the INPUT_VEC is 
+_fmm_pshiftin   ADC #42  ; carry is set. computed only if actually going to use
+                STA ZP_INPUT_VEC+1 ; it
                 LDA fmm_curtime
-                STA (ZP_OUTPUT_VEC),y
-                STX ZP_TEMP
+                STA (ZP_OUTPUT_VEC),y ; finally: accept the cell, set its time!
+                STX ZP_TEMP ; store the current element to zero page
                 _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,EAST
                 _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,EAST
                 _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,SOUTH
                 _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,SOUTH
-                LDY ZP_TEMP
-                LDX fmm_list_next,y
-                BEQ _fmm_list_destr
+                LDY ZP_TEMP ; retrieve the index of the current element from ZP
+                LDX fmm_list_next,y ; find the following element
+                BEQ _fmm_list_destr ; list had elements so free them in the end
                 LDY #_FMM_X_1_Y_1
                 JMP inner_l_skiptax
-_fmm_list_destr LDX fmm_curtime
+_fmm_list_destr LDX fmm_curtime ; free the elements in the list
                 LDY fmm_list_tail,x
                 LDA fmm_list_next
                 STA fmm_list_next,y
@@ -290,30 +278,30 @@ _fmm_list_destr LDX fmm_curtime
 defm            _fmm_consider
                 LDY #/1
                 LDA (ZP_OUTPUT_VEC),y
-                CMP #/8
-                BCC @skip
+                CMP #/8  
+                BCC @skip ; was already accepted or visited so no revisit
                 CMP #NEVER_CONSIDERED
                 BNE @test_1
-                LDA #/3
-                STA (ZP_OUTPUT_VEC),y
-                LDX #MAX_SLOWNESS
+                LDA #/3  ; the cell has never been considered
+                STA (ZP_OUTPUT_VEC),y ; mark it as NORTH, SOUTH, EAST or WEST
+                LDX #MAX_SLOWNESS ; call callback with X = MAX_SLOWNESS
                 JMP @call
 @test_1         CMP #/4
                 BNE @test_2
-                LDA fmm_curtime
-                LDY #/5
+                LDA fmm_curtime ; e.g. if /3 = NORTH, then /4 = EAST, and in
+                LDY #/5 ; this case, subtract NORTH-EAST cell from center cell
                 SBC (ZP_OUTPUT_VEC),y ; carry is set already!
                 JMP @subs
 @test_2         CMP #/6
                 BNE @skip
-                LDA fmm_curtime
-                LDY #/7
+                LDA fmm_curtime ; e.g. if /3 = NORTH, then /6 = WEST, and in
+                LDY #/7 ; this case, subtract NORTH-WEST cell from center cell
                 SBC (ZP_OUTPUT_VEC),y ; carry is set already!
 @subs           TAX
                 LDA #SOON_ACCEPTED
                 LDY #/1
                 STA (ZP_OUTPUT_VEC),y
-@call           LDA #</2
+@call           LDA #</2  ; Mutate the shift in the fmm_continue
                 STA _fmm_add_lo_mut+1
                 LDA #>/2
                 STA _fmm_add_hi_mut+1
