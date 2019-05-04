@@ -286,7 +286,7 @@ _fmm_list_destr LDA fmm_curtime
                 LDA #0
                 STA fmm_list_head,x
                 STA fmm_list_tail,x
-_fmm_run_cont   INC fmm_curtime
+                INC fmm_curtime
                 JMP _fmm_run_loop
 
 ;-------------------------------------------------------------------------------
