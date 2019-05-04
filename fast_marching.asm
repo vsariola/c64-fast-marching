@@ -148,7 +148,8 @@ _FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
 ; Touches: A
 ;-------------------------------------------------------------------------------
 defm            fmm_setmaps
-                LDA #>/1 - /2
+@tmp = >/1 - /2
+                LDA #@tmp - 1
                 STA _fmm_pshiftin+1
                 LDA #>/2
                 STA _fmm_seed_himut+1
@@ -253,18 +254,19 @@ _fmm_run_loop   LDA fmm_curtime
 inner_loop      TAX ; X = current_element
                 LDA fmm_addr_lo,x
                 STA ZP_OUTPUT_VEC
-                STA ZP_INPUT_VEC
                 LDA fmm_addr_hi,x
                 STA ZP_OUTPUT_VEC+1
-                CLC
-_fmm_pshiftin   ADC #42
-                STA ZP_INPUT_VEC+1
                 LDY #_FMM_X_1_Y_1
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #SOON_ACCEPTED
                 BCS @set
                 JMP _fmm_load_next
-@set            LDA fmm_curtime
+@set            LDA ZP_OUTPUT_VEC
+                STA ZP_INPUT_VEC
+                LDA ZP_OUTPUT_VEC+1
+_fmm_pshiftin   ADC #42
+                STA ZP_INPUT_VEC+1
+                LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y
                 STX ZP_TEMP
                 _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,EAST
