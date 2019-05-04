@@ -121,9 +121,9 @@ WEST = 252
 EAST = 251
 SOON_ACCEPTED = 250
 
-; Your callback function should always return a value < NUM_LISTS. Furthermore,
-; NUM_LISTS should be a power of 2
-NUM_LISTS = 16
+; Your callback function should always return a value < MAX_SLOWNESS. Furthermore,
+; MAX_SLOWNESS should be a power of 2
+MAX_SLOWNESS = 16
 
 ; FMM_WIDTH and FMM_HEIGHT should be defined by the user
 
@@ -184,7 +184,7 @@ fmm_reset       LDX #0 ;    for i in range(0,256):
                 DEX
                 STA fmm_list_next,x ; list_next[i] = (i+1) & 255
                 BNE @loop1               
-                LDX NUM_LISTS ;     for i in range(NUM_LISTS):
+                LDX #0 ;     for i in range(NUM_LISTS):
                 LDA #0 
 @loop2          DEX
                 STA fmm_list_head,x ;         list_head[i] = 0
@@ -243,11 +243,9 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
 _fmm_return     RTS
 _fmm_advance    INC fmm_curtime
 fmm_run         
-_fmm_run_loop   LDA fmm_curtime
-                CMP #SOON_ACCEPTED
+_fmm_run_loop   LDX fmm_curtime
+                CPX #SOON_ACCEPTED
                 BCS _fmm_return
-                AND #NUM_LISTS-1 
-                TAX
                 LDA fmm_list_head,x
                 BEQ _fmm_advance
 inner_loop      LDY #_FMM_X_1_Y_1
@@ -278,9 +276,7 @@ _fmm_pshiftin   ADC #42  ; carry is set
                 BEQ _fmm_list_destr
                 LDY #_FMM_X_1_Y_1
                 JMP inner_l_skiptax
-_fmm_list_destr LDA fmm_curtime
-                AND #NUM_LISTS-1 
-                TAX
+_fmm_list_destr LDX fmm_curtime
                 LDY fmm_list_tail,x
                 LDA fmm_list_next
                 STA fmm_list_next,y
@@ -289,8 +285,7 @@ _fmm_list_destr LDA fmm_curtime
                 LDA #0
                 STA fmm_list_head,x
                 STA fmm_list_tail,x
-                INC fmm_curtime
-                JMP _fmm_run_loop
+                JMP _fmm_advance
 
 ;-------------------------------------------------------------------------------
 ; macro _fmm_consider_v index shift cellval
@@ -303,7 +298,7 @@ defm            _fmm_consider
                 BNE @test_1
                 LDA #/3
                 STA (ZP_OUTPUT_VEC),y
-                LDX #NUM_LISTS
+                LDX #MAX_SLOWNESS
                 JMP @call
 @test_1         CMP #/4
                 BNE @test_2
@@ -343,7 +338,6 @@ _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 BEQ _fmm_cont_ret    ; if list_next[0] == 0: return
                 CLC 
                 ADC fmm_curtime
-                AND #NUM_LISTS-1
                 TAY
                 LDA fmm_list_next,x
                 STA fmm_list_next ; list_next[0] = list_next[elem]
@@ -371,8 +365,8 @@ _fmm_cont_ret   RTS
 fmm_addr_hi     dcb 256,0       ; list of pointers to the backptr
 fmm_addr_lo     dcb 256,0
 fmm_list_next   dcb 256,0
-fmm_list_head   dcb NUM_LISTS,0
-fmm_list_tail   dcb NUM_LISTS,0
+fmm_list_head   dcb 256,0
+fmm_list_tail   dcb 256,0
 
 watch fmm_addr_hi
 watch fmm_addr_lo
