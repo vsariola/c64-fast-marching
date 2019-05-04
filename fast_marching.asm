@@ -252,7 +252,7 @@ _fmm_run_loop   LDA fmm_curtime
                 INC fmm_curtime
                 JMP _fmm_run_loop
 inner_loop      TAX ; X = current_element
-                LDA fmm_addr_lo,x
+inner_l_skiptax LDA fmm_addr_lo,x
                 STA ZP_OUTPUT_VEC
                 STA ZP_INPUT_VEC
                 LDA fmm_addr_hi,x
@@ -269,15 +269,15 @@ _fmm_pshiftin   ADC #42  ; carry is set
                 STA ZP_INPUT_VEC+1
                 LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y
-                STX ZP_TEMP
+                LDA fmm_list_next,x
+                STA ZP_TEMP
                 _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,EAST
                 _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,EAST
                 _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,SOUTH
                 _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,SOUTH
                 LDX ZP_TEMP
-_fmm_load_next  LDA fmm_list_next,x
                 BEQ _fmm_list_destr
-                JMP inner_loop
+                JMP inner_l_skiptax
 _fmm_list_destr LDA fmm_curtime
                 AND #NUM_LISTS-1 
                 TAX
