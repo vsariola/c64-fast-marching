@@ -108,6 +108,7 @@
 ZP_OUTPUT_VEC = $FD ; word
 ZP_INPUT_VEC = $02 ; word
 fmm_curtime = $04 ; byte
+ZP_TEMP = $05 ; byte
 
 watch ZP_OUTPUT_VEC
 watch ZP_INPUT_VEC
@@ -264,14 +265,12 @@ _fmm_pshiftin   ADC #42
                 JMP _fmm_load_next
 @set            LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y
-                TXA
-                PHA
+                STX ZP_TEMP
                 _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,EAST
                 _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,EAST
                 _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,SOUTH
                 _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,SOUTH
-                PLA
-                TAX
+                LDX ZP_TEMP
 _fmm_load_next  LDA fmm_list_next,x
                 BEQ _fmm_list_destr
                 JMP inner_loop
