@@ -330,8 +330,6 @@ defm            _fmm_consider
 
 _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 
-_fmm_return3    RTS   
-
 ;-------------------------------------------------------------------------------
 ; _fmm_list_add
 ; A = priority
@@ -339,7 +337,7 @@ _fmm_return3    RTS
 ;-------------------------------------------------------------------------------
 fmm_continue
 _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
-                BEQ _fmm_return3      ; if list_next[0] == 0: return
+                BEQ _fmm_cont_ret    ; if list_next[0] == 0: return
                 CLC 
                 ADC fmm_curtime
                 AND #NUM_LISTS-1
@@ -361,7 +359,7 @@ _fmm_add_hi_mut ADC #42
                 JMP @continue
 @not_empty      STA fmm_list_next,x ; list_next[old_tail] = elem
 @continue       STA fmm_list_tail,y ; list_tail[priority] = elem
-_fmm_return2    RTS   
+_fmm_cont_ret   RTS   
 
 ;-------------------------------------------------------------------------------
 ; DATA
