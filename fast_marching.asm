@@ -331,7 +331,9 @@ _fmm_callback   JMP $4242 ; mutated to allow the user change the callback
 ;-------------------------------------------------------------------------------
 ; _fmm_list_add
 ; A = priority
-; ZP_OUTPUT_VEC = addr, which is shifted by a mutated 16-bit shift
+; ZP_OUTPUT_VEC = addr, to which a 16-bit signed addition is done before it is
+;                 added to list
+; $(_fmm_add_hi_mut,_fmm_add_hi_mut) = 16-bit integer added to ZP_OUTPUT_VEC
 ;-------------------------------------------------------------------------------
 fmm_continue
 _fmm_list_add   LDX fmm_list_next ; elem = list_next[0] (elem is X)
