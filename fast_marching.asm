@@ -148,13 +148,13 @@ _FMM_SIZE_MINUS_1 = FMM_WIDTH * FMM_HEIGHT - 1
 ; Touches: A
 ;-------------------------------------------------------------------------------
 defm            fmm_setmaps
-@tmp = >/1 - /2
-                LDA #@tmp - 1
-                STA _fmm_pshiftin+1
                 LDA #>/2
                 STA _fmm_seed_himut+1
                 LDA #>/2+_FMM_SIZE_MINUS_1
                 STA _fmm_resetpage+1
+_fmm_setmaps_tmp/1/2 = >/1 - /2
+                LDA #_fmm_setmaps_tmp/1/2 - 1
+                STA _fmm_pshiftin+1
                 endm
 
 ;-------------------------------------------------------------------------------
