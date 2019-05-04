@@ -282,9 +282,6 @@ _fmm_list_destr LDX fmm_curtime
                 STA fmm_list_next,y
                 LDA fmm_list_head,x
                 STA fmm_list_next
-                LDA #0
-                STA fmm_list_head,x
-                STA fmm_list_tail,x
                 JMP _fmm_advance
 
 ;-------------------------------------------------------------------------------
