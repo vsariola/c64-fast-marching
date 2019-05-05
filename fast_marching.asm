@@ -210,10 +210,13 @@ _fmm_seed_himut ADC #42 ; we shift the high byte to point to the output
                 STA ZP_OUTPUT_VEC+1
                 TXA
                 STA ZP_OUTPUT_VEC
-                LDA #<-_FMM_X_1_Y_1
-                STA _fmm_add_lo_mut+1
-                LDA #>-_FMM_X_1_Y_1
-                STA _fmm_add_hi_mut+1
+                LDY fmm_list_next 
+                CLC
+                ADC #<-_FMM_X_1_Y_1
+                STA fmm_addr_lo,y
+                LDA ZP_OUTPUT_VEC+1
+                ADC #>-_FMM_X_1_Y_1
+                STA fmm_addr_hi,y
                 LDA #0
                 JMP fmm_continue ; tail call to set the priority of the cell    
 
@@ -282,6 +285,14 @@ defm            _fmm_consider
                 BNE @test_1
                 LDA #/3  ; the cell has never been considered
                 STA (ZP_OUTPUT_VEC),y ; mark it as NORTH, SOUTH, EAST or WEST
+                LDX fmm_list_next 
+                LDA ZP_OUTPUT_VEC
+@foo = /2-1
+                ADC #<@foo ; carry is set
+                STA fmm_addr_lo,x
+                LDA ZP_OUTPUT_VEC+1
+                ADC #>@foo
+                STA fmm_addr_hi,x
                 LDX #MAX_SLOWNESS ; call callback with X = MAX_SLOWNESS
                 JMP @call
 @test_1         CMP #/4
@@ -296,14 +307,17 @@ defm            _fmm_consider
                 LDY #/7 ; this case, subtract NORTH-WEST cell from center cell
                 SBC (ZP_OUTPUT_VEC),y ; carry is set already!
 @subs           TAX
+                LDY fmm_list_next 
+                LDA ZP_OUTPUT_VEC
+                ADC #<@foo
+                STA fmm_addr_lo,y
+                LDA ZP_OUTPUT_VEC+1
+                ADC #>@foo
+                STA fmm_addr_hi,y
                 LDA #SOON_ACCEPTED
                 LDY #/1
                 STA (ZP_OUTPUT_VEC),y
-@call           LDA #</2  ; Mutate the shift in the fmm_continue
-                STA _fmm_add_lo_mut+1
-                LDA #>/2
-                STA _fmm_add_hi_mut+1
-                JSR _fmm_callback 
+@call           JSR _fmm_callback 
 @skip           
                 endm
 
@@ -323,12 +337,6 @@ fmm_continue    LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 TAY
                 LDA fmm_list_next,x
                 STA fmm_list_next ; list_next[0] = list_next[elem]
-                LDA ZP_OUTPUT_VEC
-_fmm_add_lo_mut ADC #42    ; carry will be clear if we are in valid range
-                STA fmm_addr_lo,x ; addr_lo[elem] = addr & 255
-                LDA ZP_OUTPUT_VEC+1
-_fmm_add_hi_mut ADC #42
-                STA fmm_addr_hi,x ; addr_hi[elem] = addr >> 8
                 LDA #0
                 STA fmm_list_next,x ; list_next[elem] = 0
                 TXA
