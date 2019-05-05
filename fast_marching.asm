@@ -246,6 +246,8 @@ inner_l_skiptax LDA fmm_addr_lo,x ; load the address of the element and store to
                 BCS @set ; already been accepted and skip
                 LDA fmm_list_next,x ; A is the following element
                 BNE inner_l_skipldy
+                TXA
+                TAY
                 JMP _fmm_list_destr
 @set            LDA ZP_OUTPUT_VEC+1 ;    the high address of the INPUT_VEC is 
 _fmm_pshiftin   ADC #42  ; carry is set. computed only if actually going to use
@@ -263,9 +265,8 @@ _fmm_pshiftin   ADC #42  ; carry is set. computed only if actually going to use
                 LDY #_FMM_X_1_Y_1
                 JMP inner_l_skiptax
 _fmm_list_destr LDX fmm_curtime ; free the elements in the list
-                LDY fmm_list_tail,x
                 LDA fmm_list_next
-                STA fmm_list_next,y
+                STA fmm_list_next,y ; Y was the tail of the list
                 LDA fmm_list_head,x
                 STA fmm_list_next
                 JMP _fmm_advance
