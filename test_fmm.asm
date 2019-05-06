@@ -35,7 +35,7 @@ callback        LDA (ZP_INPUT_VEC),y ; this loads the
                 CMP #32
                 BNE @wall
 @do_lookup      LDA lookup,x
-                JMP fmm_continue
+                fmm_inlinecontinue
 @wall           RTS  ; ... so we don't have to consider this cell at all
 
 Align

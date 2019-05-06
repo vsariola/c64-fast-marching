@@ -332,7 +332,10 @@ defm            _fmm_consider
 ;                 added to list
 ; $(_fmm_add_hi_mut,_fmm_add_hi_mut) = 16-bit integer added to ZP_OUTPUT_VEC
 ;-------------------------------------------------------------------------------
-fmm_continue    LDX fmm_list_next ; elem = list_next[0] (elem is X)
+fmm_continue    fmm_inlinecontinue
+
+defm            fmm_inlinecontinue
+                LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 CLC 
                 ADC fmm_curtime
                 TAY               ; list_index = slowness + curtime
@@ -343,6 +346,7 @@ fmm_continue    LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 TXA
                 STA fmm_list_head,y ; list_head[list_index] = elem
                 RTS
+                endm
 
 ;-------------------------------------------------------------------------------
 ; DATA
