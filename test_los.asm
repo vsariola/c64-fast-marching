@@ -32,7 +32,8 @@ incasm "fast_marching.asm"
                 LDA #0
                 STA $D020 ; border black
                 LDA #0
-                STA $D021 ; background black                
+                STA $D021 ; background black      
+                fmm_setrange 150
 @loop           fmm_setmaps map,time1
                 JSR fmm_reset
                 fmm_setcallback callback1

@@ -167,6 +167,17 @@ defm            fmm_setcallback
                 endm
 
 ;-------------------------------------------------------------------------------
+; macro fmm_setrange value
+;       Sets the 'range' i.e. maximum arrival time, exclusive, of the fast
+;       marching method
+; Touches: A
+;-------------------------------------------------------------------------------
+defm            fmm_setrange
+                LDA #/1
+                STA _fmm_range+1
+                endm
+
+;-------------------------------------------------------------------------------
 ; fmm_reset()
 ;       Resets the fast marching method, should be called before each run of the
 ;       algorithm. Clears the output array with 255 and resets the internally
@@ -238,7 +249,7 @@ _fmm_return     RTS
 fmm_run         LDX fmm_curtime
                 byte $24 ; BIT .... skips the following command
 _fmm_advance    INX ; X is now the current time
-                CPX #SOON_ACCEPTED
+_fmm_range      CPX #SOON_ACCEPTED
                 BCS _fmm_return
                 LDA fmm_list_head,x ; A is now the first element in list X
                 BEQ _fmm_advance 
