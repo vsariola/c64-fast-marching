@@ -302,16 +302,14 @@ defm            _fmm_consider
                 JMP /9
 @test_1         CMP #/4
                 BNE @test_2
-                LDA fmm_curtime ; e.g. if /3 = NORTH, then /4 = EAST, and in
                 LDY #/5 ; this case, subtract NORTH-EAST cell from center cell
-                SBC (ZP_OUTPUT_VEC),y ; carry is set already!
                 JMP @subs
 @test_2         CMP #/6
                 BNE /9+3 ; branch after the JSR to callback i.e. skip
-                LDA fmm_curtime ; e.g. if /3 = NORTH, then /6 = WEST, and in
                 LDY #/7 ; this case, subtract NORTH-WEST cell from center cell
-                SBC (ZP_OUTPUT_VEC),y ; carry is set already!
-@subs           TAX
+@subs           LDA fmm_curtime
+                SBC (ZP_OUTPUT_VEC),y ; carry is set already!          
+                TAX
                 LDY fmm_list_next 
                 LDA ZP_OUTPUT_VEC
                 ADC #<@foo
