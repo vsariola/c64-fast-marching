@@ -176,7 +176,6 @@ defm            fmm_setcallback
 fmm_reset       LDX #0 ;    for i in range(0,256):
 @loop           LDA #0 
                 STA fmm_list_head,x ;         list_head[i] = 0
-                STA fmm_list_tail,x ;         list_tail[i] = 0
                 TXA             ; this loop creates the empty lists
                 DEX
                 STA fmm_list_next,x ; list_next[i] = (i+1) & 255
@@ -336,20 +335,14 @@ defm            _fmm_consider
 fmm_continue    LDX fmm_list_next ; elem = list_next[0] (elem is X)
                 CLC 
                 ADC fmm_curtime
-                TAY
+                TAY               ; list_index = slowness + curtime
                 LDA fmm_list_next,x
                 STA fmm_list_next ; list_next[0] = list_next[elem]
-                LDA #0
-                STA fmm_list_next,x ; list_next[elem] = 0
+                LDA fmm_list_head,y ; head = list_head[list_index]
+                STA fmm_list_next,x ; list_next[elem] = head
                 TXA
-                LDX fmm_list_tail,y ; old_tail:Y = list_tail[priority]
-                BEQ @empty ; if old_tail == 0:
-                STA fmm_list_next,x ; list_next[old_tail] = elem
-                STA fmm_list_tail,y ; list_tail[priority] = elem
+                STA fmm_list_head,y ; list_head[list_index] = elem
                 RTS
-@empty          STA fmm_list_head,y ;  list_head[priority] = elem
-                STA fmm_list_tail,y          
-                RTS   
 
 ;-------------------------------------------------------------------------------
 ; DATA
@@ -358,11 +351,9 @@ fmm_addr_hi     dcb 256,0       ; list of pointers to the backptr
 fmm_addr_lo     dcb 256,0
 fmm_list_next   dcb 256,0
 fmm_list_head   dcb 256,0
-fmm_list_tail   dcb 256,0
 
 watch fmm_addr_hi
 watch fmm_addr_lo
 watch fmm_list_next
 watch fmm_list_head
-watch fmm_list_tail
 
