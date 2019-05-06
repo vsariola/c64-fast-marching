@@ -264,14 +264,10 @@ _fmm_pshiftin   ADC #42  ; carry is set. computed only if actually going to use
                 LDA fmm_curtime
                 STA (ZP_OUTPUT_VEC),y ; finally: accept the cell, set its time!
                 STX ZP_TEMP ; store the current element to zero page
-                _fmm_consider_v _FMM_X_1_Y_2,_fmm_cb_1
-                _fmm_consider _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,_fmm_cb_1
-                _fmm_consider_v _FMM_X_1_Y_0,_fmm_cb_2
-                _fmm_consider _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,_fmm_cb_2
-                _fmm_consider_h _FMM_X_0_Y_1,_fmm_cb_3
-                _fmm_consider _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,_fmm_cb_3
-                _fmm_consider_h _FMM_X_2_Y_1,_fmm_cb_4
-                _fmm_consider _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,_fmm_cb_4
+                _fmm_consider_v _FMM_X_1_Y_2,FMM_WIDTH,SOUTH,EAST,_FMM_X_0_Y_2,WEST,_FMM_X_2_Y_2,_fmm_cb_1
+                _fmm_consider_v _FMM_X_1_Y_0,-FMM_WIDTH,NORTH,EAST,_FMM_X_0_Y_0,WEST,_FMM_X_2_Y_0,_fmm_cb_2
+                _fmm_consider_h _FMM_X_0_Y_1,-1,WEST,NORTH,_FMM_X_0_Y_2,SOUTH,_FMM_X_0_Y_0,_fmm_cb_3
+                _fmm_consider_h _FMM_X_2_Y_1,1,EAST,NORTH,_FMM_X_2_Y_2,SOUTH,_FMM_X_2_Y_0,_fmm_cb_4
                 LDY ZP_TEMP ; retrieve the index of the current element from ZP
                 LDX fmm_list_next,y ; find the following element
                 BEQ _fmm_list_destr ; list had elements so free them in the end
@@ -290,7 +286,39 @@ defm            _fmm_consider_h
                 LDY #/1
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #NEVER_CONSIDERED  
-                BCC /2+3; was already accepted or visited so no revisit
+                BCC /8+3; was already accepted or visited so no revisit
+                BNE @test_1
+                LDA #/3  ; the cell has never been considered
+                STA (ZP_OUTPUT_VEC),y ; mark it as NORTH, SOUTH, EAST or WEST
+                LDX fmm_list_next 
+                LDA ZP_OUTPUT_VEC
+@foo = /2-1
+                ADC #<@foo ; carry is set
+                STA fmm_addr_lo,x
+                LDA ZP_OUTPUT_VEC+1
+                ADC #>@foo
+                STA fmm_addr_hi,x
+                LDX #MAX_SLOWNESS ; call callback with X = MAX_SLOWNESS
+                JMP /8
+@test_1         CMP #/6
+                BNE @test_2
+                LDY #/7 ; this case, subtract NORTH-EAST cell from center cell
+                JMP @subs
+@test_2         LDY #/5 ; this case, subtract NORTH-WEST cell from center cell
+@subs           LDA fmm_curtime
+                SBC (ZP_OUTPUT_VEC),y ; carry is set already!          
+                TAX
+                LDY fmm_list_next 
+                LDA ZP_OUTPUT_VEC
+                ADC #<@foo
+                STA fmm_addr_lo,y
+                LDA ZP_OUTPUT_VEC+1
+                ADC #>@foo
+                STA fmm_addr_hi,y
+                LDA #SOON_ACCEPTED
+                LDY #/1
+                STA (ZP_OUTPUT_VEC),y
+/8              JSR $4242
                 endm
 
 
@@ -298,11 +326,8 @@ defm            _fmm_consider_v
                 LDY #/1
                 LDA (ZP_OUTPUT_VEC),y
                 CMP #EAST  
-                BCC /2+3; was already accepted or visited so no revisit
+                BCC /8+3; was already accepted or visited so no revisit
                 CMP #NEVER_CONSIDERED
-                endm
-
-defm            _fmm_consider
                 BNE @test_1
                 LDA #/3  ; the cell has never been considered
                 STA (ZP_OUTPUT_VEC),y ; mark it as NORTH, SOUTH, EAST or WEST
