@@ -1,6 +1,6 @@
 FMM_WIDTH = 40
 FMM_HEIGHT = 25
-FMM_SIZE_MINUS_1 = _FMM_SIZE-1
+FMM_SIZE_MINUS_1 = FMM_SIZE-1
 
 START_LOC = 11+FMM_WIDTH*10 ; $01EF
 START_LOC2 = 22+32*15 ; $01F6
@@ -112,14 +112,14 @@ draw            LDA #0
 
 ; callbacks shouldn't touch ys
 ; callback get X, which is the relative distance between the two cells
-callback1       LDA (ZP_INPUT_VEC),y ; this loads the 
+callback1       LDA (fmm_zp_input),y ; this loads the 
                 CMP #$66
                 BEQ @notwall
                 RTS  ; ... so we don't have to consider this cell at all
 @notwall        LDA lookup,x
                 JMP fmm_continue
 
-callback2       LDA (ZP_INPUT_VEC),y ; this loads the 
+callback2       LDA (fmm_zp_input),y ; this loads the 
                 CMP #$A0
                 BNE @notwall2
                 RTS  ; ... so we don't have to consider this cell at all
@@ -127,10 +127,10 @@ callback2       LDA (ZP_INPUT_VEC),y ; this loads the
                 JMP fmm_continue
 
 Align
-time1           dcb 1000,NEVER_CONSIDERED
+time1           dcb 1000,0
 
 Align
-time2           dcb 1000,NEVER_CONSIDERED
+time2           dcb 1000,0
 
 
 Align

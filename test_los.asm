@@ -1,6 +1,6 @@
 FMM_WIDTH = 40
 FMM_HEIGHT = 25
-FMM_SIZE_MINUS_1 = _FMM_SIZE-1
+FMM_SIZE_MINUS_1 = FMM_SIZE-1
 
 START_LOC = 11+FMM_WIDTH*10 ; $01EF
 SCREEN_MEM = $0400
@@ -52,15 +52,15 @@ incasm "fast_marching.asm"
                 JSR read_joystick
                 JMP @loop
                 
-read_joystick   LDX #_FMM_X_1_Y_1
+read_joystick   LDX #FMM_X_1_Y_1
                 LDA #%0001
                 BIT $DC01
                 BNE @not_up
-                LDX #_FMM_X_1_Y_0
+                LDX #FMM_X_1_Y_0
 @not_up         LDA #%0010
                 BIT $DC01
                 BNE @not_down
-                LDX #_FMM_X_1_Y_2
+                LDX #FMM_X_1_Y_2
 @not_down       LDA #%0100
                 BIT $DC01
                 BNE @not_left
@@ -78,7 +78,7 @@ read_joystick   LDX #_FMM_X_1_Y_1
                 STA coord_hi
                 SEC
                 LDA coord_lo
-                SBC #_FMM_X_1_Y_1
+                SBC #FMM_X_1_Y_1
                 STA coord_lo
                 LDA coord_hi
                 SBC #0
@@ -141,14 +141,14 @@ draw            LDA #0
 
 ; callbacks shouldn't touch ys
 ; callback get X, which is the relative distance between the two cells
-callback1       LDA (ZP_INPUT_VEC),y ; this loads the 
+callback1       LDA (fmm_zp_input),y ; this loads the 
                 CMP #$66
                 BEQ @notwall
                 RTS  ; ... so we don't have to consider this cell at all
 @notwall        LDA lookup,x
                 JMP fmm_continue
 
-callback2       LDA (ZP_INPUT_VEC),y ; this loads the 
+callback2       LDA (fmm_zp_input),y ; this loads the 
                 CMP #$A0
                 BNE @notwall2
                 RTS  ; ... so we don't have to consider this cell at all
@@ -159,10 +159,10 @@ coord_lo        byte <START_LOC
 coord_hi        byte >START_LOC
 
 Align
-time1           dcb 1000,NEVER_CONSIDERED
+time1           dcb 1000,0
 
 Align
-time2           dcb 1000,NEVER_CONSIDERED
+time2           dcb 1000,0
 
 
 Align

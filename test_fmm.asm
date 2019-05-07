@@ -31,7 +31,7 @@ incasm "fast_marching.asm"
         
 ; callbacks shouldn't touch ys
 ; callback get X, which is the relative distance between the two cells
-callback        LDA (ZP_INPUT_VEC),y ; this loads the 
+callback        LDA (fmm_zp_input),y ; this loads the 
                 CMP #32
                 BNE @wall
 @do_lookup      LDA lookup,x
@@ -39,7 +39,7 @@ callback        LDA (ZP_INPUT_VEC),y ; this loads the
 @wall           RTS  ; ... so we don't have to consider this cell at all
 
 Align
-time            dcb 1000,NEVER_CONSIDERED
+time            dcb 1000,0
 
 Align
 map     BYTE    $23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23,$23
