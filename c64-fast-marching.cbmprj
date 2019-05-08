@@ -43,6 +43,50 @@
     <AssyBinaryFileLocation />
     <SourceFiles>
         <SourceFile>
+            <Name>example_los.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>example_moving_los.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>True</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>example_simple.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
+            <Name>example_two_seeds.asm</Name>
+            <PrgName />
+            <FileType>2</FileType>
+            <IncludeInBuild>False</IncludeInBuild>
+            <Regions />
+            <Breakpoints />
+            <Bookmarks />
+            <Topmost>False</Topmost>
+            <FileOpen>True</FileOpen>
+        </SourceFile>
+        <SourceFile>
             <Name>fast_marching.asm</Name>
             <PrgName />
             <FileType>2</FileType>
@@ -63,39 +107,6 @@
             <Bookmarks />
             <Topmost>False</Topmost>
             <FileOpen>False</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>test_fmm.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>False</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>test_lighting.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>False</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
-        </SourceFile>
-        <SourceFile>
-            <Name>test_los.asm</Name>
-            <PrgName />
-            <FileType>2</FileType>
-            <IncludeInBuild>False</IncludeInBuild>
-            <Regions />
-            <Breakpoints />
-            <Bookmarks />
-            <Topmost>False</Topmost>
-            <FileOpen>True</FileOpen>
         </SourceFile>
     </SourceFiles>
 </Project>
